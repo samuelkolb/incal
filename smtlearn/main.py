@@ -320,7 +320,7 @@ def learn_parameter_free(problem, data, seed):
     feat_x, feat_y = problem.domain.real_vars
 
     def learn_inc(_data, i, _k, _h):
-        learner = KCnfSmtLearner(_k, _h, RandomViolationsStrategy(10))
+        learner = KCnfSmtLearner(_k, _h, RandomViolationsStrategy(10), symmetry_breaking=True)
         dir_name = "../output/{}".format(problem.name)
         img_name = "{}_{}_{}_{}_{}_{}".format(learner.name, i, _k, _h, len(data), seed)
         learner.add_observer(plotting.PlottingObserver(problem.domain, data, dir_name, img_name, feat_x, feat_y))
@@ -432,7 +432,7 @@ def main():
     print("Computing samples took {:.2f}s".format(sample_time_elapsed))
 
     # learn_parameter_free(problem, data, seed)
-    learn_one_class(problem, data, seed)
+    learn_parameter_free(problem, data, seed)
     exit()
 
     start = time.time()

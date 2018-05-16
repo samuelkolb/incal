@@ -7,11 +7,12 @@ from incremental_learner import IncrementalLearner
 
 
 class KCnfSmtLearner(IncrementalLearner):
-    def __init__(self, conjunction_count, half_space_count, selection_strategy, allow_negations=True):
+    def __init__(self, conjunction_count, half_space_count, selection_strategy, allow_negations=True, symmetry_breaking=False):
         IncrementalLearner.__init__(self, "cnf_smt", selection_strategy)
         self.conjunction_count = conjunction_count
         self.half_space_count = half_space_count
         self.allow_negations = allow_negations
+        self.symmetry_breaking = symmetry_breaking
 
     def learn_partial(self, solver, domain, data, new_active_indices):
         # Constants
@@ -31,7 +32,8 @@ class KCnfSmtLearner(IncrementalLearner):
 
         # Variables
         a_hr = [[smt.Symbol("a_hr[{}][{}]".format(h, r), REAL) for r in range(n_r)] for h in range(n_h_original)]
-        b_h = [smt.Symbol("b_h[{}]".format(h), REAL) for h in range(n_h_original)]
+        if not self.symmetry_breaking:
+            b_h = [smt.Symbol("b_h[{}]".format(h), REAL) for h in range(n_h_original)]
         s_ch = [[smt.Symbol("s_ch[{}][{}]".format(c, h)) for h in range(n_h)] for c in range(n_c)]
         s_cb = [[smt.Symbol("s_cb[{}][{}]".format(c, b)) for b in range(n_b)] for c in range(n_c)]
 
@@ -45,7 +47,10 @@ class KCnfSmtLearner(IncrementalLearner):
 
             for h in range(n_h_original):
                 sum_coefficients = smt.Plus([a_hr[h][r] * smt.Real(x_r[r]) for r in range(n_r)])
-                solver.add_assertion(smt.Iff(s_ih[i][h], sum_coefficients <= b_h[h]))
+                if self.symmetry_breaking:
+                    solver.add_assertion(smt.Iff(s_ih[i][h], sum_coefficients <= smt.Real(1)))
+                else:
+                    solver.add_assertion(smt.Iff(s_ih[i][h], sum_coefficients <= b_h[h]))
 
             for h in range(n_h_original, n_h):
                 solver.add_assertion(smt.Iff(s_ih[i][h], ~s_ih[i][h - n_h_original]))
@@ -58,11 +63,12 @@ class KCnfSmtLearner(IncrementalLearner):
                     + [s_cb[c][b] for b in range(n_b_original, n_b) if not x_b[b - n_b_original]]
                 )))
 
-            # for c in range(n_c):
-            #     for h in range(n_h_original):
-            #         solver.add_assertion(~(s_ch[c][h] & s_ch[c][h + n_h_original]))
-            #     for b in range(n_b_original):
-            #         solver.add_assertion(~(s_cb[c][b] & s_cb[c][b + n_b_original]))
+            if self.symmetry_breaking:
+                for c in range(n_c):
+                    for h in range(n_h_original):
+                        solver.add_assertion(~s_ch[c][h] | ~s_ch[c][h + n_h_original])
+                    for b in range(n_b_original):
+                        solver.add_assertion(~s_cb[c][b] | ~s_cb[c][b + n_b_original])
 
             if label:
                 solver.add_assertion(smt.And([s_ic[i][c] for c in range(n_c)]))
@@ -73,13 +79,22 @@ class KCnfSmtLearner(IncrementalLearner):
         model = solver.get_model()
 
         x_vars = [domain.get_symbol(domain.real_vars[r]) for r in range(n_r)]
-        half_spaces = [
-            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) <= model.get_value(b_h[h])
-            for h in range(n_h_original)
-        ] + [
-            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) > model.get_value(b_h[h])
-            for h in range(n_h - n_h_original)
-        ]
+        if self.symmetry_breaking:
+            half_spaces = [
+                smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) <= smt.Real(1)
+                for h in range(n_h_original)
+            ] + [
+                smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) > smt.Real(1)
+                for h in range(n_h - n_h_original)
+            ]
+        else:
+            half_spaces = [
+                smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) <= model.get_value(b_h[h])
+                for h in range(n_h_original)
+            ] + [
+                smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) > model.get_value(b_h[h])
+                for h in range(n_h - n_h_original)
+            ]
 
         b_vars = [domain.get_symbol(domain.bool_vars[b]) for b in range(n_b_original)]
         bool_literals = [b_vars[b] for b in range(n_b_original)]
