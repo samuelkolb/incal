@@ -14,7 +14,7 @@ class KCnfSmtLearner(IncrementalLearner):
         self.allow_negations = allow_negations
         self.symmetry_breaking = symmetry_breaking
 
-    def learn_partial(self, solver, domain, data, new_active_indices):
+    def learn_partial(self, solver, domain, data, new_active_indices, initial):
         # Constants
         n_b_original = len(domain.bool_vars)
         n_b = n_b_original * 2
@@ -40,6 +40,10 @@ class KCnfSmtLearner(IncrementalLearner):
         # Aux variables
         s_ih = [[smt.Symbol("s_ih[{}][{}]".format(i, h)) for h in range(n_h)] for i in range(n_d)]
         s_ic = [[smt.Symbol("s_ic[{}][{}]".format(i, c)) for c in range(n_c)] for i in range(n_d)]
+
+        if self.symmetry_breaking and initial:
+            for h in range(n_h_original - 1):
+                solver.add_assertion(a_hr[h][0] >= a_hr[h + 1][0])
 
         # Constraints
         for i in new_active_indices:

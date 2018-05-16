@@ -98,11 +98,13 @@ class IncrementalLearner(Learner):
         self.observer.observe("initial", active_indices)
 
         formula = None
+        initial = True
 
         with smt.Solver() as solver:
             while len(active_indices) > 0:
                 solving_start = time.time()
-                formula = self.learn_partial(solver, domain, data, active_indices)
+                formula = self.learn_partial(solver, domain, data, active_indices, initial)
+                initial = False
                 solving_time = time.time() - solving_start
 
                 selection_start = time.time()
@@ -114,5 +116,5 @@ class IncrementalLearner(Learner):
 
         return formula
 
-    def learn_partial(self, solver, domain, data, new_active_indices):
+    def learn_partial(self, solver, domain, data, new_active_indices, initial):
         raise NotImplementedError()
