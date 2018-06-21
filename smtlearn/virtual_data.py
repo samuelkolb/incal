@@ -25,6 +25,8 @@ class OneClassStrategy(SelectionStrategy):
         symbols = real_symbols.copy()
         symbols.update(bool_symbols)
         bounds = domain.get_bounds(fm)
+        thresholds = {var: fm.Real(t) for var, t in self.thresholds.items()}
+
         try:
             with self.environment.factory.Solver() as solver:
                 solver.add_assertion(formula)
@@ -42,21 +44,26 @@ class OneClassStrategy(SelectionStrategy):
                         constraint = fm.Implies(fm.And(
                             *[fm.Iff(bool_symbols[bool_var], fm.Bool(row[bool_var])) for bool_var in domain.bool_vars]),
                             fm.Or(*[fm.Ite(real_symbols[real_var] >= fm.Real(row[real_var]),
-                                           real_symbols[real_var] - fm.Real(row[real_var]) >= fm.Real(
-                                               self.thresholds[real_var]),
-                                           fm.Real(row[real_var]) - real_symbols[real_var] >= fm.Real(
-                                               self.thresholds[real_var])) for real_var in
-                                    domain.real_vars]))
+                                           real_symbols[real_var] - fm.Real(row[real_var]) >= thresholds[real_var],
+                                           fm.Real(row[real_var]) - real_symbols[real_var] >= thresholds[real_var])
+                                    for real_var in domain.real_vars]))
                     elif label == (not self.class_label):
                         constraint = fm.Implies(fm.And(
                             *[fm.Iff(bool_symbols[bool_var], fm.Bool(row[bool_var])) for bool_var in domain.bool_vars]),
                             fm.Or(*[fm.Ite(real_symbols[real_var] >= fm.Real(row[real_var]),
-                                           real_symbols[real_var] - fm.Real(row[real_var]) >= fm.Real(
-                                               self.thresholds[real_var]),
-                                           fm.Real(row[real_var]) - real_symbols[real_var] >= fm.Real(
-                                               self.thresholds[real_var])) for real_var in
-                                    domain.real_vars]))
+                                           real_symbols[real_var] - fm.Real(row[real_var]) >= thresholds[real_var],
+                                           fm.Real(row[real_var]) - real_symbols[real_var] >= thresholds[real_var])
+                                    for real_var in domain.real_vars]))
+                    else:
+                        raise ValueError()
                     solver.add_assertion(constraint)
+                # solver.add_assertion(fm.Or([
+                #     fm.Or([fm.Ite(real_symbols[real_var] >= fm.Real(row[real_var]),
+                #                   fm.Equals(real_symbols[real_var] - fm.Real(row[real_var]), thresholds[real_var]),
+                #                   fm.Equals(fm.Real(row[real_var]) - real_symbols[real_var], thresholds[real_var]))
+                #            for real_var in domain.real_vars])
+                #     for row, label in data if label == self.class_label
+                # ]))
                 solver.solve()
                 model = solver.get_model()
                 example = {var: model.get_value(symbols[var]).constant_value() for var in domain.variables}
@@ -77,6 +84,7 @@ class OneClassStrategy(SelectionStrategy):
                 return []
             data.append((example, not self.class_label))
             return [len(data) - 1]
+
 
 """
 There is a point e, such that for every example e': d(e, e') > t

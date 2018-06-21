@@ -432,7 +432,7 @@ def main():
     print("Computing samples took {:.2f}s".format(sample_time_elapsed))
 
     # learn_parameter_free(problem, data, seed)
-    learn_parameter_free(problem, data, seed)
+    learn_one_class(problem, data, seed)
     exit()
 
     start = time.time()
