@@ -26,6 +26,16 @@ class OneClassStrategy(SelectionStrategy):
         symbols.update(bool_symbols)
         bounds = domain.get_bounds(fm)
         thresholds = {var: fm.Real(t) for var, t in self.thresholds.items()}
+        threshold = thresholds[domain.real_vars[0]]
+
+        def boolean_agreement(ex):
+            return fm.And([fm.Iff(bool_symbols[bv], fm.Bool(ex[bv])) for bv in domain.bool_vars])
+
+        def distance(ex):
+            return sum(fm.Ite(real_symbols[rv] >= fm.Real(ex[rv]),
+                              real_symbols[rv] - fm.Real(ex[rv]),
+                              fm.Real(ex[rv]) - real_symbols[rv])
+                       for rv in domain.real_vars)
 
         try:
             with self.environment.factory.Solver() as solver:
@@ -40,30 +50,17 @@ class OneClassStrategy(SelectionStrategy):
                 #         equalities.append(fm.Ite(sym >= val, fm.Equals(sym - val, t), fm.Equals(val - sym, t)))
                 # solver.add_assertion(fm.Or(*equalities))
                 for row, label in data:
-                    if label == self.class_label:
-                        constraint = fm.Implies(fm.And(
-                            *[fm.Iff(bool_symbols[bool_var], fm.Bool(row[bool_var])) for bool_var in domain.bool_vars]),
-                            fm.Or(*[fm.Ite(real_symbols[real_var] >= fm.Real(row[real_var]),
-                                           real_symbols[real_var] - fm.Real(row[real_var]) >= thresholds[real_var],
-                                           fm.Real(row[real_var]) - real_symbols[real_var] >= thresholds[real_var])
-                                    for real_var in domain.real_vars]))
-                    elif label == (not self.class_label):
-                        constraint = fm.Implies(fm.And(
-                            *[fm.Iff(bool_symbols[bool_var], fm.Bool(row[bool_var])) for bool_var in domain.bool_vars]),
-                            fm.Or(*[fm.Ite(real_symbols[real_var] >= fm.Real(row[real_var]),
-                                           real_symbols[real_var] - fm.Real(row[real_var]) >= thresholds[real_var],
-                                           fm.Real(row[real_var]) - real_symbols[real_var] >= thresholds[real_var])
-                                    for real_var in domain.real_vars]))
-                    else:
-                        raise ValueError()
+                    if label == self.class_label:  # Positive example
+                        constraint = fm.Implies(boolean_agreement(row), distance(row) >= threshold)
+                    else:  # Negative example
+                        constraint = fm.Implies(boolean_agreement(row), distance(row) >= threshold)
                     solver.add_assertion(constraint)
-                # solver.add_assertion(fm.Or([
-                #     fm.Or([fm.Ite(real_symbols[real_var] >= fm.Real(row[real_var]),
-                #                   fm.Equals(real_symbols[real_var] - fm.Real(row[real_var]), thresholds[real_var]),
-                #                   fm.Equals(fm.Real(row[real_var]) - real_symbols[real_var], thresholds[real_var]))
-                #            for real_var in domain.real_vars])
-                #     for row, label in data if label == self.class_label
-                # ]))
+
+                # Distance must be equals (for faster convergence)
+                solver.add_assertion(fm.Or([
+                    boolean_agreement(row) & fm.Equals(distance(row), threshold)
+                    for row, label in data if label == self.class_label
+                ]))
                 solver.solve()
                 model = solver.get_model()
                 example = {var: model.get_value(symbols[var]).constant_value() for var in domain.variables}

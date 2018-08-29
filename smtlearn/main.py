@@ -10,9 +10,10 @@ import matplotlib as mpl
 from pysmt.shortcuts import *
 
 import plotting
+from dt_selection import get_distances
 from generator import get_sample
 from inc_logging import LoggingObserver
-from incremental_learner import AllViolationsStrategy, RandomViolationsStrategy
+from incremental_learner import AllViolationsStrategy, RandomViolationsStrategy, WeightedRandomViolationsStrategy
 from k_cnf_smt_learner import KCnfSmtLearner
 from k_dnf_logic_learner import KDNFLogicLearner, GreedyLogicDNFLearner, GreedyMaxRuleLearner
 from k_dnf_smt_learner import KDnfSmtLearner
@@ -336,11 +337,25 @@ def learn_parameter_free(problem, data, seed):
 
 def learn_one_class(problem, data, seed):
     feat_x, feat_y = problem.domain.real_vars
-    thresholds = {feat_x: 0.1, feat_y: 0.1}
+    thresholds = {feat_x: 0.15, feat_y: 0.15}
     data = [(row, label) for row, label in data if label]
+    domain = problem.domain
+
+    def l1(p1, p2):
+        return sum(abs(p1[r] - p2[r]) for r in domain.real_vars) if all(p1[b] == p2[b] for b in domain.bool_vars) else 1
+
+    negatives = []
+    while len(negatives) < len(data):
+        neg_sample = get_sample(problem.domain)
+        if all(l1(neg_sample, pos) > 0.15 for pos, l in data):
+            negatives.append((neg_sample, False))
+
+    data += negatives
 
     def learn_inc(_data, i, _k, _h):
-        learner = KCnfSmtLearner(_k, _h, OneClassStrategy(RandomViolationsStrategy(1), thresholds))
+        strategy = RandomViolationsStrategy(1)
+        strategy = WeightedRandomViolationsStrategy(1, [min(d.values()) for d in get_distances(problem.domain, data)])
+        learner = KCnfSmtLearner(_k, _h, OneClassStrategy(strategy, thresholds))
         dir_name = "../output/{}_one_class".format(problem.name)
         img_name = "{}_{}_{}_{}_{}_{}".format(learner.name, i, _k, _h, len(data), seed)
 

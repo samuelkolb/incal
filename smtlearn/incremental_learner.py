@@ -50,7 +50,7 @@ class WeightedRandomViolationsStrategy(AllViolationsStrategy):
         self.last_violations = all_violations
         sample_size = min(self.sample_size, len(all_violations))
         import sampling
-        return sampling.sample_weighted(zip(all_violations, [self.weights[i] for i in all_violations]), sample_size)
+        return list(sampling.sample_weighted(zip(all_violations, [self.weights[i] for i in all_violations]), sample_size))
 
 
 class MaxViolationsStrategy(AllViolationsStrategy):

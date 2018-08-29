@@ -4,7 +4,6 @@
 import sklearn.tree as tree
 
 import generator
-from main import checker_problem
 import pysmt.shortcuts as smt
 
 
@@ -69,6 +68,7 @@ def get_distances(domain, data):
 
 if __name__ == "__main__":
     def main():
+        from main import checker_problem
         problem = checker_problem()
         data = generator.get_problem_samples(problem, 10, 1)
         print(get_distances(problem.domain, data))
