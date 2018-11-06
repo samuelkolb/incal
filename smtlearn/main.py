@@ -6,7 +6,7 @@ import random
 import time
 from math import sqrt
 
-import matplotlib as mpl
+import matplotlib as mpl#comment
 from pysmt.shortcuts import *
 
 import plotting
