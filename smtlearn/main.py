@@ -14,9 +14,9 @@ from generator import get_sample
 from inc_logging import LoggingObserver
 from incremental_learner import AllViolationsStrategy, RandomViolationsStrategy
 from k_cnf_smt_learner import KCnfSmtLearner
-from k_dnf_logic_learner import KDNFLogicLearner, GreedyLogicDNFLearner, GreedyMaxRuleLearner
-from k_dnf_smt_learner import KDnfSmtLearner
-from k_dnf_greedy_learner import GreedyMilpRuleLearner
+#from k_dnf_logic_learner import KDNFLogicLearner, GreedyLogicDNFLearner, GreedyMaxRuleLearner
+#from k_dnf_smt_learner import KDnfSmtLearner
+#from k_dnf_greedy_learner import GreedyMilpRuleLearner
 from parameter_free_learner import learn_bottom_up
 from problem import Domain, Problem
 from smt_check import SmtChecker
@@ -28,7 +28,7 @@ from virtual_data import OneClassStrategy
 mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from k_dnf_learner import KDNFLearner
+#from k_dnf_learner import KDNFLearner
 
 def xy_domain():
     variables = ["x", "y"]
@@ -413,9 +413,9 @@ def main():
     random.seed(65)
     # problem = simple_univariate_problem()
     # problem = simple_checker_problem()
-    # problem = simple_checker_problem_cnf()
+    problem = simple_checker_problem_cnf()
     # problem = shared_hyperplane_problem()
-    problem = checker_problem()
+    #problem = checker_problem()
     # problem = cross_problem()
     # problem = bool_xor_problem()
     # data = [
@@ -432,7 +432,7 @@ def main():
     print("Computing samples took {:.2f}s".format(sample_time_elapsed))
 
     # learn_parameter_free(problem, data, seed)
-    learn_one_class(problem, data, seed)
+    learn_parameter_free(problem, data, seed)
     exit()
 
     start = time.time()
@@ -453,6 +453,7 @@ def main():
     # learner = KDnfSmtLearner(8, 2)
     # learner = GreedyMaxRuleLearner(8)
     # learner = GreedyMilpRuleLearner(4, 4)
+
     learner = KCnfSmtLearner(5, 5, RandomViolationsStrategy(20))
 
     # if isinstance(learner, KDNFLearner):

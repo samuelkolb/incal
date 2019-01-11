@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: pywmi
+Version: 0.2.14
+Summary: Essential tools and interfaces for WMI
+Home-page: http://github.com/samuelkolb/pywmi
+Author: Samuel Kolb
+Author-email: samuel.kolb@me.com
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN

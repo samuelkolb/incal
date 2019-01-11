@@ -4,7 +4,6 @@ import time
 from z3.z3types import Z3Exception
 import pysmt
 
-
 class ParameterFrontier(object):
     def __init__(self, w_k, w_h):
         self.c = lambda k, h: w_k * k + w_h * h
@@ -35,6 +34,7 @@ def learn_bottom_up(data, learn_f, w_k, w_h, init_k=1, init_h=0, max_k=None, max
     :param max_h:   The maximal value for h
     :return: A tuple containing: 1) the CNF(k, h) formula phi with minimal complexity C(k, h); 2) k; and 3) h
     """
+
     solution = None
     frontier = ParameterFrontier(w_k, w_h)
     frontier.push(init_k, init_h)
