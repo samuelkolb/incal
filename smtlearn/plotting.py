@@ -136,7 +136,7 @@ def draw_points(feat_x, feat_y, domain, formula, data, learned_labels, name, act
 
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
-
+    plt.tight_layout()
     plt.savefig("{}.png".format(name))
     plt.close(fig)
 

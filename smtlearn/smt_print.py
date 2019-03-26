@@ -43,7 +43,7 @@ class PrintWalker(SmtWalker):
         if v_type == smt.BOOL:
             return str(value)
         elif v_type == smt.REAL:
-            return "{}".format(round(float(value),5))
+            return "{}".format(round(float(value),2))
         else:
             raise RuntimeError("Unknown type {}".format(v_type))
 

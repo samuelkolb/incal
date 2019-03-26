@@ -34,6 +34,8 @@ import os
 mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 from lp import LPLearner
+from milp import LPLearnermilp
+from reducedmilp import smallmilp
 import string
 import csv
 import pywmi
@@ -41,6 +43,14 @@ from sklearn.model_selection import KFold, cross_val_score
 from lp_problems import cuben, simplexn, polutionreduction, police
 from lp_wineproblem import importwine,partioning
 from lp_oldfuctions import accuracy
+
+from pebble import ProcessPool
+from concurrent.futures import TimeoutError
+
+
+from milp_as_in_paper import papermilp
+#from milp import rockingthemilp
+
 
 
 def evaluate_assignment(problem, assignment):
@@ -194,6 +204,15 @@ class ParameterObserver:
             [self.seednumber, self.dimensions, self.samplesize, self.time, self.numberofconstrains,
              self.numberofconstrainsmodel, self.tpr, self.tnr])
 
+def loadintermedautresult(dic,v):
+    lh=len(os.listdir(dic))-1
+    print(lh)
+    with open(dic+v+str(lh)+".csv") as f:
+        data = [json.loads(line) for line in f]
+    last = data[-1]
+    return nested_to_smt(last["theory"])
+
+
 
 def get_dt_weights(m, data):
     import dt_selection
@@ -201,47 +220,130 @@ def get_dt_weights(m, data):
     return dt_weights
 
 
-def learn_parameter_free(problem, data, seed):
-    # feat_x, feat_y = problem.domain.real_vars[:2] needed for plotting observer
+def learn_parameter_free(problem, data, seed,method="smt",synthetic=False):
+    #feat_x, feat_y = problem.domain.real_vars[:2]# needed for plotting observer
 
-    o = TrackingObserver(random.sample(list(range(len(data))), 20))
+    #o = TrackingObserver(random.sample(list(range(len(data))), 20))
+
+    w = get_dt_weights(problem, data)
+    p = zip(range(len(data)), [w[i] for i in range(len(data))])
+    p = sorted(p, key=lambda t: t[1])
+    d = [t[0] for t in p[0:20]]
+    o = TrackingObserver(d)
+
 
     def learn_inc(_data, i, _k, _h):
 
         w = get_dt_weights(problem, data)
+
         # learner = LPLearner(_h, RandomViolationsStrategy(10))
         # learner = LPLearner(_h, WeightedRandomViolationsStrategy(10,w))
-        learner = LPLearner(_h, MaxViolationsStrategy(1, w))
+        #out symetries
+        #learner = (_h, MaxViolationsStrategy(1, w))# ,symmetries="n")
+        if method=="smt":
+            learner=LPLearner(_h, MaxViolationsStrategy(1, w))
+            #learner = LPLearner(_h, MaxViolationsStrategy(1, w) ,symmetries="n")
+        else:
+            learner = LPLearnermilp(_h, MaxViolationsStrategy(1, w))
 
-        dir_nameO = "../output/{}/{}/{}/observer{}:{}:{}.csv".format(problem.name, len(data), seed, len(data),
+        #change temp to len(data)
+        if synthetic:
+            dir_nameO = "../output/{}/{}/{}/{}/{}/observer{}:{}:{}.csv".format(method,"syn", problem.half_space_count,len(data), seed, len(data),#len(data instead of sh
+                                                                    len(problem.domain.variables), _h)
+        else:
+            dir_nameO = "../output/{}/{}/{}/{}/observer{}:{}:{}.csv".format(method,problem.name, len(data), seed, len(data),#len(data instead of sh
                                                                      len(problem.domain.variables), _h)
+
+
         #img_name = "{}_{}_{}_{}_{}_{}_{}".format(learner.name, len(problem.domain.variables), i, _k, _h, len(data),
-        #                                         seed)
-        #learner.add_observer(plotting.PlottingObserver(problem.domain, data, dir_name, img_name, feat_x, feat_y))
+         #                                        seed)
+        #dir_nameP = "../output/{}/{}/{}/".format(problem.name, len(data), seed, len(data))
+        #dir_nameP = "../output/{}/{}/{}/{}/".format("syn", problem.half_space_count, len(data), seed, len(data))
+        #learner.add_observer(plotting.PlottingObserver(problem.domain, data, dir_nameP, img_name, feat_x, feat_y))
+
         learner.add_observer(LoggingObserver(dir_nameO, verbose=False))
 
         learner.add_observer(o)
+
         if len(o.initials) > 20:
             initial_indices = random.sample(o.initials, 20)
 
         else:
             initial_indices = o.initials
 
+
         learned_theory = learner.learn(problem.domain, data, initial_indices)
+
         print("Learned theory:\n{}".format(pretty_print(learned_theory)))
         return learned_theory
 
-    return learn_bottom_up(data, learn_inc, 1000000, 1)
+    return learn_bottom_up(data, learn_inc, 1000000, 1)#,init_h=len(x.get_atoms()))
 
 
-def testing(nbseeds, nbdimensions, nbsamplesize, learner, modelinput):
+def learndouble(problem,data,seed):
+    w = get_dt_weights(problem, data)
+    p = zip(range(len(data)), [w[i] for i in range(len(data))])
+    p = sorted(p, key=lambda t: t[1])
+    d = [t[0] for t in p[0:20]] #[-20:]
+    print("1",d)
+    da=[data[i] for i in d]
+    x,y,z=learn_parameter_free(problem,da,seed)
+    print(z)
+
+    return learn_parameter_free(problem,data,seed,z)
+
+
+def nptodic(generated):
+    samples=[]
+    for s,l in zip(generated.samples, generated.labels):
+
+        variables = {}
+        for i ,p in zip(generated.formula.domain.variables ,range(len(generated.formula.domain.variables))):
+            variables[i]=s[p].item()
+        samples.append((variables,l))
+    return samples
+
+
+
+
+
+from lp_problems import hexagon
+import numpy as np
+with open("/Users/Elias/Documents/GitHub/smtlearn/output/incal milp/simplexn/theories_learned/D:4S:500.csv") as csv_file:
+    csv_reader = csv.reader(csv_file, delimiter=',')
+    line_count = 0
+    for row in csv_reader:
+        theory_one=nested_to_smt(row[0])
+
+# t=simplexn(4)
+# sample_count=1000000
+# tprl=[]
+# tnrl=[]
+# start = time.time()
+# for i in range(50):
+#     tpr = pywmi.RejectionEngine(t.domain, t.theory, Real(1.0),
+#                                                       sample_count).compute_probability(theory_one)
+#     tnr = pywmi.RejectionEngine(t.domain, ~t.theory, Real(1.0),
+#                                                       sample_count).compute_probability(~theory_one)
+#     tprl.append(tpr)
+#     tnrl.append(tnr)
+#
+# print(time.time()-start)
+# print(np.std(tprl))
+# print(np.std(tnrl))
+# print(np.mean(tprl))
+# print(np.mean(tnrl))
+
+
+
+def testing(nbseeds, nbdimensions, nbsamplesize, modelinput,incal="smt"):
     parameter = ParameterObserver()
     sample_count = 1000000
 
     for i in nbdimensions:
 
         model = modelinput(i)
-        dir_name_for_equaltions = "../output/{}/{}/".format(model.name, "theories_learned")
+        dir_name_for_equaltions = "../output/{}/{}/{}/".format(incal,model.name, "theories_learned")
         if not os.path.exists(dir_name_for_equaltions):
             os.makedirs(dir_name_for_equaltions)
 
@@ -249,13 +351,13 @@ def testing(nbseeds, nbdimensions, nbsamplesize, learner, modelinput):
             parameter.seednumber = 0
             equationsfound = []
             seeds = random.sample(range(10000000), nbseeds)
-            dir_name_for_samplesize = "../output/{}/{}".format(model.name, j)
+            dir_name_for_samplesize = "../output/{}/{}/{}".format(incal,model.name, j)
             if not os.path.exists(dir_name_for_samplesize):
                 os.makedirs(dir_name_for_samplesize)
 
             for k in seeds:
 
-                dir_name_for_seed = "../output/{}/{}/{}".format(model.name, j, k)
+                dir_name_for_seed = "../output/{}/{}/{}/{}".format(incal,model.name, j, k)
                 if not os.path.exists(dir_name_for_seed):
                     os.makedirs(dir_name_for_seed)
                 print(time.asctime(), i, j, k)
@@ -268,10 +370,58 @@ def testing(nbseeds, nbdimensions, nbsamplesize, learner, modelinput):
                 data = sample_half_half(model, j, k)
 
                 start = time.time()
-                learned_theory, km, numberofconstrains = learner(model, data, k)
-                #just insert here the milp one for testing.-> milp as in paper
+                if incal == "smt":
+                    with ProcessPool() as pool:
+                        future = pool.schedule(learn_parameter_free, args=[model, data, k,incal], timeout=90*60)
 
-                parameter.time = time.time() - start
+                    try:
+                        result = future.result()
+                        learned_theory = result[0]
+                        km = result[1]
+                        numberofconstrains = result[2]
+                        parameter.time = time.time() - start
+                    except TimeoutError:
+                        dir_nameO = "../output/{}/{}/{}/{}/".format(incal,model.name, len(data), k)
+                        dir_run = "observer{}:{}:".format(len(data), len(model.domain.variables))
+                        parameter.time = False
+                        learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                        numberofconstrains = len(learned_theory.get_atoms())
+                        print("Function took longer than seconds")
+                elif incal == "milp":
+                    with ProcessPool() as pool:
+                        future = pool.schedule(learn_parameter_free, args=[model, data, k,incal], timeout=90*60)
+
+                    try:
+                        result = future.result()
+                        learned_theory = result[0]
+                        km = result[1]
+                        numberofconstrains = result[2]
+                        parameter.time = time.time() - start
+                    except TimeoutError:
+                        dir_nameO = "../output/{}/{}/{}/{}/".format(incal,model.name, len(data), k)
+                        dir_run = "observer{}:{}:".format(len(data), len(model.domain.variables))
+                        parameter.time = False
+                        learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                        numberofconstrains = len(learned_theory.get_atoms())
+                        print("Function took longer than seconds")
+                elif incal=="smallmilp":
+                    learned_theory, numberofconstrains, timelimit = smallmilp(model.domain, data, 14)
+                     #learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                    if timelimit == True:
+                        parameter.time = 90*60
+
+                    else:
+                        parameter.time = time.time() - start
+                elif incal=="bigmilp":
+                    # learned_theory, km, numberofconstrains = learn_parameter_free(model, data, k)
+                    learned_theory, numberofconstrains, timelimit = papermilp(model.domain, data, 14)
+                    # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                    if timelimit == True:
+                        parameter.time = 90*60
+
+                    else:
+                        parameter.time = time.time() - start
+
                 parameter.numberofconstrainsmodel = numberofconstrains
                 # parameter.accucy=accucy(theroy=model,theorylearned=theory,data1=adata)
                 parameter.tpr = pywmi.RejectionEngine(model.domain, model.theory, Real(1.0),
@@ -282,24 +432,25 @@ def testing(nbseeds, nbdimensions, nbsamplesize, learner, modelinput):
                 parameter.updating()
                 equationsfound.append([smt_to_nested(learned_theory)])
 
-            dir_name_for_equaltions = "../output/{}/{}/D:{}S:{}.csv".format(model.name, "theories_learned", i, j)
+            dir_name_for_equaltions = "../output/{}/{}/{}/D:{}S:{}.csv".format(incal,model.name, "theories_learned", i, j)
             with open(dir_name_for_equaltions, 'w', newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerows(equationsfound)
 
-    dir_name_results = "../output/{}/{}{}{}.csv".format(modelinput, "Results", nbdimensions, nbsamplesize)
+    dir_name_results = "../output/{}/{}/{}{}{}.csv".format(incal,model.name, "Results", nbdimensions, nbsamplesize)
     with open(dir_name_results, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(parameter.overallruns)
 
     return parameter.overallruns
 
+#testing(1,[2],[50],cuben,"smallmilp")
 
-def testingpractical(nbseeds, nbsamplesize, learner, modelinput):
+def testingpractical(nbseeds, nbsamplesize, modelinput,incal="smt"):
     parameter = ParameterObserver()
     sample_count = 1000000
     model = modelinput()
-    dir_name_for_equaltions = "../output/{}/{}/".format(model.name, "theories_learned")
+    dir_name_for_equaltions = "../output/{}/{}/{}/".format(incal,model.name, "theories_learned")
     if not os.path.exists(dir_name_for_equaltions):
         os.makedirs(dir_name_for_equaltions)
 
@@ -307,12 +458,12 @@ def testingpractical(nbseeds, nbsamplesize, learner, modelinput):
         parameter.seednumber = 0
         equationsfound = []
         seeds = random.sample(range(10000000), nbseeds)
-        dir_name_for_samplesize = "../output/{}/{}".format(model.name, j)
+        dir_name_for_samplesize = "../output/{}/{}/{}".format(incal,model.name, j)
         if not os.path.exists(dir_name_for_samplesize):
             os.makedirs(dir_name_for_samplesize)
         for k in seeds:
 
-            dir_name_for_seed = "../output/{}/{}/{}".format(model.name, j, k)
+            dir_name_for_seed = "../output/{}/{}/{}/{}".format(incal,model.name, j, k)
             if not os.path.exists(dir_name_for_seed):
                 os.makedirs(dir_name_for_seed)
             print(time.asctime(), j, k)
@@ -320,12 +471,65 @@ def testingpractical(nbseeds, nbsamplesize, learner, modelinput):
             parameter.samplesize = j
 
             parameter.numberofconstrains = len(model.theory.get_atoms())
-            data = sample_half_half(model, j, k)
+            data = sample_half_half(model, j, k)#change 100 to j
 
             start = time.time()
-            learned_theory, km, numberofconstrains = learner(model, data, k)
+            if incal == "smt":
+                with ProcessPool() as pool:
+                    future = pool.schedule(learn_parameter_free, args=[model, data, k, incal], timeout=90 * 60)
+
+                try:
+                    result = future.result()
+                    learned_theory = result[0]
+                    km = result[1]
+                    numberofconstrains = result[2]
+                    parameter.time = time.time() - start
+                except TimeoutError:
+                    dir_nameO = "../output/{}/{}/{}/{}/".format(incal, model.name, len(data), k)
+                    dir_run = "observer{}:{}:".format(len(data), len(model.domain.variables))
+                    parameter.time = False
+                    learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                    numberofconstrains = len(learned_theory.get_atoms())
+                    print("Function took longer than seconds")
+            elif incal == "milp":
+                with ProcessPool() as pool:
+                    future = pool.schedule(learn_parameter_free, args=[model, data, k, incal], timeout=90 * 60)
+
+                try:
+                    result = future.result()
+                    learned_theory = result[0]
+                    km = result[1]
+                    numberofconstrains = result[2]
+                    parameter.time = time.time() - start
+                except TimeoutError:
+                    dir_nameO = "../output/{}/{}/{}/{}/".format(incal, model.name, len(data), k)
+                    dir_run = "observer{}:{}:".format(len(data), len(model.domain.variables))
+                    parameter.time = False
+                    learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                    numberofconstrains = len(learned_theory.get_atoms())
+                    print("Function took longer than seconds")
+            elif incal == "smallmilp":
+                learned_theory, numberofconstrains, timelimit = smallmilp(model.domain, data, 14)
+                # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                if timelimit == True:
+                    parameter.time = 90 * 60
+
+                else:
+                    parameter.time = time.time() - start
+            elif incal == "bigmilp":
+                # learned_theory, km, numberofconstrains = learn_parameter_free(model, data, k)
+                learned_theory, numberofconstrains, timelimit = papermilp(model.domain, data, 14)
+                # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                if timelimit == True:
+                    parameter.time = 90 * 60
+
+                else:
+                    parameter.time = time.time() - start
+
+
             parameter.numberofconstrainsmodel = numberofconstrains
-            parameter.time = time.time() - start
+
+
             parameter.tpr = pywmi.RejectionEngine(model.domain, model.theory, Real(1.0),
                                                   sample_count).compute_probability(learned_theory)
             parameter.tnr = pywmi.RejectionEngine(model.domain, ~model.theory, Real(1.0),
@@ -335,251 +539,174 @@ def testingpractical(nbseeds, nbsamplesize, learner, modelinput):
             parameter.updating()
             equationsfound.append([smt_to_nested(learned_theory)])
 
-        dir_name_for_equaltions = "../output/{}/{}/S:{}.csv".format(model.name, "theories_learned", j)
+        dir_name_for_equaltions = "../output/{}/{}/{}/S:{}.csv".format(incal,model.name, "theories_learned", j)
 
         with open(dir_name_for_equaltions, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerows(equationsfound)
 
-    dir_name = "../output/{}/{}{}{}.csv".format(modelinput, "Results", model.name, nbsamplesize)
+    dir_name = "../output/{}/{}/{}{}{}.csv".format(incal,model.name, "Results", model.name, nbsamplesize)
     with open(dir_name, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(parameter.overallruns)
 
     return parameter.overallruns
+#testingpractical(1,[50],police,"milp")
+#from genratorsyn import generate_synthetic_dataset
+#x=generate_synthetic_dataset("synthetic",0,3,"cnf",2,1,2,500,70)
+
+#d=nptodic(x)
+
+def testingsyn(nbseeds, numberofvariables, nbsamplesize, numberofhalfspaces, incal="smt"):
+    #parameter = ParameterObserver()
+    sample_count = 1000000
+    from genratorsyn import generate_synthetic_dataset
+    for a in numberofhalfspaces:
+        parameter = ParameterObserver()
+        for i in numberofvariables:
+
+            dir_name_for_equaltions = "../output/{}/{}/{}/{}/".format(incal,"syn",a, "theories_learned")
+            if not os.path.exists(dir_name_for_equaltions):
+                os.makedirs(dir_name_for_equaltions)
+
+            for j in nbsamplesize:
+                parameter.seednumber = 0
+                equationsfound = []
+                seeds = random.sample(range(10000000), nbseeds)
+                dir_name_for_samplesize = "../output/{}/{}/{}/{}".format(incal,"syn",a, j)
+                if not os.path.exists(dir_name_for_samplesize):
+                    os.makedirs(dir_name_for_samplesize)
+
+                for k in seeds:
+
+                    dir_name_for_seed = "../output/{}/{}/{}/{}/{}".format(incal,"syn",a, j, k)
+                    if not os.path.exists(dir_name_for_seed):
+                        os.makedirs(dir_name_for_seed)
+                    print(time.asctime(), i, j, k)
+                    parameter.seednumber = parameter.seednumber + 1
+                    parameter.dimensions = i
+                    parameter.samplesize = j
+
+                    parameter.numberofconstrains = a
+                    try:
+                        synmodel = generate_synthetic_dataset("synthetic", 0, i, "cnf", a, 1, a, j, 70)
+                    except RuntimeError:
+                        continue
+
+                    data=nptodic(synmodel)
+                    pretty_print(synmodel.formula.support)
+
+                    start = time.time()
+                    if incal == "smt":
+                        with ProcessPool() as pool:
+                            future = pool.schedule(learn_parameter_free, args=[synmodel.formula, data, k,incal,True], timeout=90*60)
+
+                        try:
+                            result = future.result()
+                            learned_theory = result[0]
+                            km = result[1]
+                            numberofconstrains = result[2]
+                            parameter.time = time.time() - start
+                        except TimeoutError:
+                            dir_nameO = "../output/{}/{}/{}/{}/{}/".format(incal,"syn",a, len(data), k)
+                            dir_run = "observer{}:{}:".format(len(data), i)
+                            parameter.time = 90*60
+                            learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                            numberofconstrains = len(learned_theory.get_atoms())
+                            print("Function took longer than seconds")
+                    elif incal == "milp":
+                        with ProcessPool() as pool:
+                            future = pool.schedule(learn_parameter_free, args=[synmodel.formula, data, k,incal,True], timeout=90*60)
+
+                        try:
+                            result = future.result()
+                            learned_theory = result[0]
+                            km = result[1]
+                            numberofconstrains = result[2]
+                            parameter.time = time.time() - start
+                        except TimeoutError:
+                            dir_nameO = "../output/{}/{}/{}/{}/{}/".format(incal,"syn",a, len(data), k)
+                            dir_run = "observer{}:{}:".format(len(data), i)
+                            parameter.time = 90*60
+                            learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                            numberofconstrains = len(learned_theory.get_atoms())
+                            print("Function took longer than seconds")
+                    elif incal =="smallmilp":
+                        learned_theory, numberofconstrains, timelimit = smallmilp(synmodel.formula.domain, data, 14)
+                        # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                        if timelimit == True:
+                            parameter.time = 90 * 60
+
+                        else:
+                            parameter.time = time.time() - start
+                    elif incal =="bigmilp":
+                        # learned_theory, km, numberofconstrains = learn_parameter_free(model, data, k)
+                        learned_theory, numberofconstrains, timelimit = papermilp(synmodel.formula.domain, data, 14)
+                        # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                        if timelimit == True:
+                            parameter.time = 90*60
+
+                        else:
+                            parameter.time = time.time() - start
+
+                    parameter.numberofconstrainsmodel = numberofconstrains
+                    # parameter.accucy=accucy(theroy=model,theorylearned=theory,data1=adata)
+                    parameter.tpr = pywmi.RejectionEngine(synmodel.formula.domain, synmodel.formula.support, Real(1.0),
+                                                          sample_count).compute_probability(learned_theory)
+                    parameter.tnr = pywmi.RejectionEngine(synmodel.formula.domain, ~synmodel.formula.support, Real(1.0),
+                                                          sample_count).compute_probability(~learned_theory)
+
+                    parameter.updating()
+                    equationsfound.append([smt_to_nested(learned_theory)])
+
+                dir_name_for_equaltions = "../output/{}/{}/{}/{}/D:{}S:{}.csv".format(incal,"syn",a, "theories_learned", i, j)
+                with open(dir_name_for_equaltions, 'w', newline='') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerows(equationsfound)
+
+        dir_name_results = "../output/{}/{}/{}/{}{}{}.csv".format(incal,"syn",a, "Results", numberofvariables, nbsamplesize)
+        with open(dir_name_results, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerows(parameter.overallruns)
+
+    return parameter.overallruns
+
+#seeds,vars,samplesize,halfspaces
 
 
-def qualifiyingwine(lenght):
-    data, head = importwine()
-    labeled = partioning(data, 5, 5)
-    random.shuffle(labeled)
-    # lenght=round(0.8*(len(labeled)))
-
-    train = labeled[:lenght]
-    test = labeled[lenght:lenght + 200]
-
-    variables = []
-    var_types = {}
-    var_domains = {}
-    for i in head:
-        variables.append(i[1:-1])
-        var_types[i[1:-1]] = REAL
-        var_domains[i[1:-1]] = (0, 1)
-    domain = Domain(variables, var_types, var_domains)
-    problem = Problem(domain, 0, "wine")
-    theory, km, numberofconstrains = learn_parameter_free(problem, train, 3)
-    a = accuracy(theorylearned=theory, data1=test)
-    print(a)
-    return theory, a
+#print(testing(1,[2],[50],cuben,"bigmilp"))
+print(testingpractical(1,[50],polutionreduction,"milp"))
 
 
-def import_slump():
-    with open('/Users/Elias/Desktop/slump_test.data.txt', newline='') as csvfile:
-        slumpdata = csv.reader(csvfile, delimiter=',', quotechar='|')
-        linecount = 0
-        dataoutput = []
-        for row in slumpdata:
-            if linecount > 0:
-                row = [float(x) for x in row]
-                row[8], row[1] = row[1], row[8]
-                dataoutput.append(row[1:9])
-            else:
-                row[8], row[1] = row[1], row[8]
-                header = row[1:9]
-            linecount += 1
+# testing(10,[4],[400,500],cuben,"bigmilp")
+# testing(10,[4],[400,500],simplexn,"bigmilp")
+# testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"bigmilp")
+# testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"bigmilp")
+#
+# testingpractical(10,[400,500,1000,2000],police,"bigmilp")
+# testingpractical(10,[400,500,1000,2000],polutionreduction(),"bigmilp")
+#
+# testing(10,[5,6],[200,300,400,500],cuben,"smt")
+# testing(10,[5,6],[200,300,400,500],simplexn,"smt")
 
-    return dataoutput, header
+#
+# testing(10,[5,6],[200,300,400,500],cuben,"milp")
+# testing(10,[5,6],[200,300,400,500],simplexn,"milp")
+#
+#
+# testing(10,[4],[400,500],cuben,"smallmilp")
+# testing(10,[4],[400,500],simplexn,"smallmilp")
 
+# testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"smallmilp")
+# testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"smallmilp")
+# testingpractical(10,[400,500,1000,2000],police,"smallmilp")
+# testingpractical(10,[400,500,1000,2000],polutionreduction(),"smallmilp")
 
+#testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"smt")
+#testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"milp")
 
-def definingslumpclass(data):
-    def normilisation(x, min, max, p):
-        return (x - min[p]) / (max[p] - min[p])
-
-    # minn=list(map(min, zip(*data)))
-    # maxx=list(map(max, zip(*data)))
-
-    # for i in data:             #aktivate normlisation again
-    #   for j in range(1,len(i)):
-    #      i[j]=normilisation(i[j],minn,maxx,j)
-
-    for i in data:
-        lenght = len(i)
-        for j in range(1, lenght):
-            for k in range(j, lenght):
-                i.append(i[j] * i[k])
-
-    for i in data[:]:
-        if (i[0] * 10) >= 10 and (i[0] * 10) <= 40:
-            i[0] = 1
-        elif (i[0] * 10) >= 50 and (i[0] * 10) <= 90:
-            i[0] = 2
-        elif (i[0] * 10) >= 100 and (i[0] * 10) <= 150:
-            i[0] = 3
-        elif (i[0] * 10) >= 160 and (i[0] * 10) <= 210:
-            i[0] = 4
-        elif (i[0] * 10) >= 220:
-            i[0] = 5
-        else:
-            i[0] = 0
-
-    return data
-
-
-def creatingvaraiblenames(head):
-    head = [h.replace(" ", "") for h in head]
-    new = head[:]
-
-    for i in range(1, len(head)):
-        for j in range(i, len(head)):
-            new.append(head[i] + head[j])
-    return new
-
-
-def mergeslumpdataandhead(head, data):
-    outputlist = []
-    for i in data:
-        outputlist.append(dict(zip(head, i)))
-
-    return outputlist
-
-
-def classification(cl, data):
-    outputlist = []
-    for i in data:
-        if i["SLUMP(cm)"] == cl:
-            del i["SLUMP(cm)"]
-            outputlist.append((i, True))
-        else:
-            del i["SLUMP(cm)"]
-            outputlist.append((i, False))
-    return outputlist
-
-
-def slamp(clas):
-    postivies = 0
-
-    data, variablenames = import_slump()
-    data = definingslumpclass(data)
-    variablenames = creatingvaraiblenames(variablenames)
-    q = mergeslumpdataandhead(variablenames, data)
-    labeled = classification(clas, q)
-    # random.shuffle(labeled)
-
-    for i in labeled:
-        if i[1]:
-            postivies += 1
-
-    variables = []
-    var_types = {}
-    var_domains = {}
-
-    for i in variablenames[1:]:
-        variables.append(i)
-        var_types[i] = REAL
-        var_domains[i] = (None, None)
-    domain = Domain(variables, var_types, var_domains)
-    problem = Problem(domain, 0, "slump")
-    dir_name_for_equaltions = "../output/{}/{}/".format(problem.name, "theories_learned")
-    if not os.path.exists(dir_name_for_equaltions):
-        os.makedirs(dir_name_for_equaltions)
-
-    k_fold = KFold(n_splits=5)
-    overallruns = []
-    foldcount = 1
-    equationsfound = []
-    for train_indices, test_indices in k_fold.split(labeled):
-        train = [labeled[i] for i in train_indices]
-        test = [labeled[i] for i in test_indices]
-
-        start = time.time()
-        learned_theory, km, hm = learn_parameter_free(problem, train, 2)
-        timee = time.time() - start
-        overallruns.append([clas, foldcount, timee, accuracy(theorylearned=learned_theory, data1=test),
-                            pretty_print(normilisation_rightsideto1(learned_theory))])
-        foldcount += 1
-        print(overallruns)
-        equationsfound.append([smt_to_nested(learned_theory)])
-
-    dir_name_for_equaltions = "../output/{}/{}/class:{}.csv".format(problem.name, "theories_learned", clas)
-
-    with open(dir_name_for_equaltions, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerows(equationsfound)
-
-    dir_name = "../output/{}/{}{}.csv".format(problem.name, "Results", clas)
-    with open(dir_name, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerows(overallruns)
-
-    return overallruns, postivies
-
-
-model = polutionreduction()
-data11 = sample_half_half(model, 100)
-learned_theory, km, hm = learn_parameter_free(model, data11, 5)
-# x=smt_to_nested(learned_theory)
-# y=nested_to_smt(x)
-# sample_count = 1000000
-# tpr = pywmi.RejectionEngine(model.domain, model.theory, Real(1.0), sample_count).compute_probability(learned_theory)
-# tnr = pywmi.RejectionEngine(model.domain, ~model.theory, Real(1.0), sample_count).compute_probability(~learned_theory)
-# print(tpr, tnr)
-
-
-# importing the equation results
-# with open("/Users/Elias/Documents/GitHub/smtlearn/output/cuben/theories_learned/D:[2]S:[50].csv") as csv_file:
-#   csv_reader = csv.reader(csv_file, delimiter=',')
-#  line_count = 0
-# for row in csv_reader:
-#    y=nested_to_smt(row[0])
-
-
-# print(testing(2,[2],[50],learn_parameter_free,cuben))
-# print(testingpractical(2,[50,100],learn_parameter_free,polutionreduction))
-
-
+#testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"smt")
+#testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"milp")
 random.seed(65)
 
-# print(testing(10,[2,3],[20,30,40,50,100,200,300],learn_parameter_free,cuben))
-# print(testing(10,[2,3],[20,30,40,50,100,200,300],learn_parameter_free,simplexn))
 
-# print(testingpractical(10,[20,30,40,50,100,200,300],learn_parameter_free,polutionreduction))
-# print(testingpractical(10,[20,30,40,50,100,200,300],learn_parameter_free,police))
-
-# print(testing(10,[2,3],[400,500],learn_parameter_free,cuben))
-# print(testing(10,[2,3],[400,500],learn_parameter_free,simplexn))
-
-# print(testingpractical(10,[500,1000,2000],learn_parameter_free,polutionreduction))
-# print(testingpractical(10,[500,1000,2000],learn_parameter_free,police))
-
-
-# start here again
-# print(testing(10,[4],[20,30,40,50,100,200,300],learn_parameter_free,cuben))
-# print(testing(10,[4],[20,30,40,50,100,200,300],learn_parameter_free,simplexn))
-
-# print(testing(10,[4],[20,30,40,50,100],learn_parameter_free,cuben()))
-# print(testing(10,[4],[20,30,40,50,100],learn_parameter_free,simplexn()))
-
-
-# TODO  5/6 dimensions
-
-# running slump
-# for i in [1,3,4,5]:
-#   x,y,z=slamp(i)
-
-# print(testing(10,[4],[20,30,40,50,100,200,300],learn_parameter_free,cuben))
-# print(testing(10,[4],[20,30,40,50,100,200,300],learn_parameter_free,simplexn))
-
-# print(testing(10,[4],[20,30,40,50,100],learn_parameter_free,cuben()))
-# print(testing(10,[4],[20,30,40,50,100],learn_parameter_free,simplexn()))
-
-
-# x,y=import_slump()
-# x=multi(x)
-# y=header(y)
-# e=[]
-# for j in range(len(y)):
-#   l=[]
-#  for i in x:
-#     l.append(i[j])
-# e.append(min(l))

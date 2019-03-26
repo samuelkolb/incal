@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: autodora
+Version: 0.3.3
+Summary: Automate experiments and explore your data
+Home-page: http://github.com/samuelkolb/pydora
+Author: Samuel Kolb
+Author-email: samuel.kolb@me.com
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN
+Provides-Extra: telegram

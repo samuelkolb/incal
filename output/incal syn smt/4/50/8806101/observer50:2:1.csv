@@ -1,0 +1,2 @@
+{"type": "initial", "indices": [23, 14, 27, 5, 1, 21, 6, 29, 25, 34, 2, 49, 43, 48, 30, 8, 16, 0, 38, 37]}
+{"type": "update", "theory": "(<= (+ (* (const real 5.35518822299001) (var real r0)) (* (const real 10.728104562944875) (var real r1))) (const real 9.030454817178391))", "indices": [7], "solving_time": 0.04759478569030762, "selection_time": 0.0019838809967041016}

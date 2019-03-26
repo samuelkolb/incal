@@ -2,7 +2,7 @@
 
 from gurobipy import *
 
-import lplearing
+#from lplearing import sample_half_half,polutionreduction
 
 from pysmt.shortcuts import Real, LE, Plus, Times, Symbol,And, GE
 from pysmt.typing import REAL
@@ -11,11 +11,15 @@ from smt_print import pretty_print
 
 
 
+
 def papermilp(domain,data,numberofcosntraints):
     m = Model("milppaper")
+    m.setParam('TimeLimit', 60*90)
+    m.setParam('OutputFlag', False)
+    print("BM")
     #constants
     n_c=numberofcosntraints #number of constraint #i
-    n_v=len(model.domain.real_vars) #number of varaibles #j
+    n_v=len(domain.real_vars) #number of varaibles #j
     n_e=len(data)#number of examples len(data) #k
     bigm=10000000
     ep=1
@@ -25,7 +29,7 @@ def papermilp(domain,data,numberofcosntraints):
     c_j=c_0+(1-c_0)#add compelxity here
 
 
-    v_j_k = [[row[v] for v in model.domain.real_vars] for row, _  in data]
+    v_j_k = [[row[v] for v in domain.real_vars] for row, _  in data]
     #v_j_k = [[row[v] for v in var] for row, _  in data]
     labels = [row[1] for row in data]
 
@@ -140,9 +144,8 @@ def papermilp(domain,data,numberofcosntraints):
     m.setObjective(quicksum(1*wb_i_j[i][j] for i in range(n_c) for j in range(n_v))-1/1000*sum(sum(wf_i_j[i][j]for j in range(n_v))+cf_i[i] for i in range(n_c))+1/1000000*sum(sum(wl_i_j[i][j]+wu_i_j[i][j] for j in range(n_v))+cl_i[i]+cu_i[i]for i in range(n_c)), GRB.MINIMIZE)
     m.optimize()
 
-    m.optimize()
 
-    if m.status == GRB.Status.OPTIMAL:
+    if m.status ==  GRB.Status.OPTIMAL:
 
         print("w_i_j[constrain][varaiable]")
         for i in range(n_c):
@@ -151,19 +154,20 @@ def papermilp(domain,data,numberofcosntraints):
 
     inequalitys=[]
     for i in range(n_c):
-
         getvariables=[Symbol(domain.variables[j], REAL) for j in range(n_v)]
         rightside=Real(c_i[i].x)
-        inequalitys.append(GE(rightside,Plus(Real(w_i_j[i][j].x)*getvariables[j] for j in range(n_v))))
+        if sum([w_i_j[i][j].x for j in range(n_v)])+c_i[i].x >=0.001 or sum([w_i_j[i][j].x for j in range(n_v)])+c_i[i].x <=-0.001 :
+            inequalitys.append(GE(rightside,Plus(Real(w_i_j[i][j].x)*getvariables[j] for j in range(n_v))))
 
     theory=And(t for t in inequalitys)
 
 
-    m.write("/Users/Elias/Desktop/e.lp")
+    #m.write("/Users/Elias/Desktop/e.lp")
 
-    return theory
-
-
-model=lplearing.polutionreduction()
-data=lplearing.sample_half_half(model,100)
-x=papermilp(model.domain,data,3)
+    if m.status== GRB.Status.TIME_LIMIT:
+        return theory, len(theory.get_atoms()),True
+    else:
+        return theory, len(theory.get_atoms()), False
+#model=polutionreduction()
+#data=sample_half_half(model,20)
+#x=papermilp(model.domain,data,13)

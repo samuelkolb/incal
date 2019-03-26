@@ -1,0 +1,4 @@
+[console_scripts]
+pywmi-cli = pywmi.__main__:parse
+pywmi-install = pywmi.install:main
+

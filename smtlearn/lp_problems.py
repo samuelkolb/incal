@@ -166,6 +166,52 @@ def police():
     theory = And(i for i in l)
     return Problem(domain,theory,"police")
 
+def police2():
+
+    variables=["x1","x2","x3","x4","x5"]
+    var_types={"x1":REAL,"x2":REAL,"x3":REAL,"x4":REAL,"x5":REAL}
+    var_domains={"x1":(0,1),"x2":(0,1),"x3":(0,1),"x4":(0,1),"x5":(0,1)}
+    domain= Domain(variables, var_types, var_domains)
+    x1,x2,x3,x4,x5=(domain.get_symbol(i)for i in ["x1","x2","x3","x4","x5"])
+    l=[]
+
+    l.append(x1+0*x2+0*x3+0*x4+0*x5>=48/200)
+    l.append(x1+x2+0*x3+0*x4+0*x5>=79/200)
+    l.append(x1+x2+0*x3+0*x4+0*x5>=65/200)
+    l.append(x1+x2+x3+0*x4+0*x5>=87/200)
+    l.append(0*x1+x2+x3+0*x4+0*x5>=64/200)
+    l.append(0*x1+0*x2+x3+x4+0*x5>=73/200)
+    l.append(0*x1+0*x2+x3+x4+0*x5>=82/200)
+    l.append(0*x1+0*x2+0*x3+x4+0*x5>=43/200)
+    l.append(0*x1+0*x2+0*x3+x4+x5>=52/200)
+    l.append(0*x1+0*x2+0*x3+0*x4+x5>=15/200)
+
+    theory = And(i for i in l)
+    return Problem(domain,theory,"police")
+
+def police3():
+
+    variables=["x1","x2","x3","x4","x5"]
+    var_types={"x1":REAL,"x2":REAL,"x3":REAL,"x4":REAL,"x5":REAL}
+    var_domains={"x1":(0,1),"x2":(0,1),"x3":(0,1),"x4":(0,1),"x5":(0,1)}
+    domain= Domain(variables, var_types, var_domains)
+    x1,x2,x3,x4,x5=(domain.get_symbol(i)for i in ["x1","x2","x3","x4","x5"])
+    l=[]
+
+    l.append(x1+0*x2+0*x3+0*x4+0*x5>=48)
+    l.append(x1+x2+0*x3+0*x4+0*x5>=79)
+    l.append(x1+x2+0*x3+0*x4+0*x5>=65)
+    l.append(x1+x2+x3+0*x4+0*x5>=87)
+    l.append(0*x1+x2+x3+0*x4+0*x5>=64)
+    l.append(0*x1+0*x2+x3+x4+0*x5>=73)
+    l.append(0*x1+0*x2+x3+x4+0*x5>=82)
+    l.append(0*x1+0*x2+0*x3+x4+0*x5>=43)
+    l.append(0*x1+0*x2+0*x3+x4+x5>=52)
+    l.append(0*x1+0*x2+0*x3+0*x4+x5>=15)
+
+    theory = And(i for i in l)
+    return Problem(domain,theory,"police")
+
 
 def polutionreduction():
 

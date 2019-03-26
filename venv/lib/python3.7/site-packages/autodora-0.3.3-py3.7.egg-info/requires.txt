@@ -1,0 +1,7 @@
+matplotlib
+peewee
+pebble
+numpy
+
+[telegram]
+python-telegram-bot

@@ -8,6 +8,9 @@ from learner import Learner
 from smt_check import SmtChecker
 
 
+
+
+
 class SelectionStrategy(object):
     def select_active(self, domain, data, formula, active_indices):
         raise NotImplementedError()
@@ -87,32 +90,40 @@ class IncrementalLearner(Learner):
         self.selection_strategy = selection_strategy
         self.observer = observe.DispatchObserver()
 
+
     def add_observer(self, observer):
         self.observer.add_observer(observer)
 
-    def learn(self, domain, data, initial_indices=None):
+
+    def learn(self, domain, data,initial_indices=None):
 
         active_indices = list(range(len(data))) if initial_indices is None else initial_indices
         all_active_indices = active_indices
 
         self.observer.observe("initial", active_indices)
 
+
         formula = None
 
         with smt.Solver() as solver:
+            #solver.set("timeout", 600)
             while len(active_indices) > 0:
                 solving_start = time.time()
+
                 formula = self.learn_partial(solver, domain, data, active_indices)
                 solving_time = time.time() - solving_start
 
                 selection_start = time.time()
-                new_active_indices = list(self.selection_strategy.select_active(domain, data, formula, all_active_indices))
+
+                new_active_indices = list(self.selection_strategy.select_active(domain,data, formula, all_active_indices))
                 active_indices = new_active_indices
                 all_active_indices += active_indices
+
                 selection_time = time.time() - selection_start
                 self.observer.observe("iteration", formula, active_indices, solving_time, selection_time)
 
         return formula
+
 
     def learn_partial(self, solver, domain, data, new_active_indices):
         raise NotImplementedError()

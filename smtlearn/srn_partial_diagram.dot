@@ -1,0 +1,6 @@
+digraph G { 
+graph [ fontname = "Helvetica",fontsize="16",ratio = "auto",
+        size="7.5,10",ranksep="2.00" ];
+node [fontsize="16"];
+"4" [label="-Infinity",fillcolor=lightsalmon,color=black,shape=box,style=filled];
+}
