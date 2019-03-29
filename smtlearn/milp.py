@@ -3,7 +3,6 @@
 from gurobipy import *
 
 #import lplearing
-from problem import Domain, Problem
 
 from pysmt.shortcuts import Real, LE, Plus, Times, Symbol,And, GE
 from pysmt.typing import REAL

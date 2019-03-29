@@ -19,7 +19,6 @@ from k_cnf_smt_learner import KCnfSmtLearner
 # from k_dnf_smt_learner import KDnfSmtLearner
 # from k_dnf_greedy_learner import GreedyMilpRuleLearner
 from parameter_free_learner import learn_bottom_up
-from problem import Domain, Problem
 from smt_check import SmtChecker
 from experiments import IncrementalConfig
 from parse import smt_to_nested, nested_to_smt
@@ -309,11 +308,11 @@ def nptodic(generated):
 
 from lp_problems import hexagon
 import numpy as np
-with open("/Users/Elias/Documents/GitHub/smtlearn/output/incal milp/simplexn/theories_learned/D:4S:500.csv") as csv_file:
-    csv_reader = csv.reader(csv_file, delimiter=',')
-    line_count = 0
-    for row in csv_reader:
-        theory_one=nested_to_smt(row[0])
+# with open("/Users/Elias/Documents/GitHub/smtlearn/output/incal milp/simplexn/theories_learned/D:4S:500.csv") as csv_file:
+#     csv_reader = csv.reader(csv_file, delimiter=',')
+#     line_count = 0
+#     for row in csv_reader:
+#         theory_one=nested_to_smt(row[0])
 
 # t=simplexn(4)
 # sample_count=1000000
@@ -702,7 +701,7 @@ print(testingpractical(1,[50],polutionreduction,"milp"))
 # testingpractical(10,[400,500,1000,2000],police,"smallmilp")
 # testingpractical(10,[400,500,1000,2000],polutionreduction(),"smallmilp")
 
-#testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"smt")
+testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"smt")
 #testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"milp")
 
 #testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"smt")

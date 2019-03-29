@@ -7,35 +7,36 @@ import pysmt.shortcuts as smt
 import parse
 
 
-class Domain(object):
-    def __init__(self, variables, var_types, var_domains):
-        self.variables = variables
-        self.var_types = var_types
-        self.var_domains = var_domains
-
-    @property
-    def bool_vars(self):
-        return [v for v in self.variables if self.var_types[v] == smt.BOOL]
-
-    @property
-    def real_vars(self):
-        return [v for v in self.variables if self.var_types[v] == smt.REAL]
-
-    def get_symbol(self, variable, formula_manager=None):
-        if formula_manager is None:
-            formula_manager = smt
-        return formula_manager.Symbol(variable, self.var_types[variable])
-
-    def get_bounds(self, formula_manager=None):
-        fm = smt if formula_manager is None else formula_manager
-        sym = fm.Symbol
-        bounds = [(sym(v, smt.REAL) >= b[0]) & (sym(v, smt.REAL) <= b[1]) for v, b in self.var_domains.items()]
-        return fm.And(*bounds)
-
-    def __str__(self):
-        return "({})".format(", ".join(
-            ("{}[{}, {}]".format(v, *self.var_domains[v]) if self.var_types[v] is smt.REAL else v)
-            for v in self.variables))
+# class Domain(object):
+#     def __init__(self, variables, var_types, var_domains):
+#         self.variables = variables
+#         self.var_types = var_types
+#         self.var_domains = var_domains
+#
+#     @property
+#     def bool_vars(self):
+#         return [v for v in self.variables if self.var_types[v] == smt.BOOL]
+#
+#     @property
+#     def real_vars(self):
+#         return [v for v in self.variables if self.var_types[v] == smt.REAL]
+#
+#     def get_symbol(self, variable, formula_manager=None):
+#         if formula_manager is None:
+#             formula_manager = smt
+#         return formula_manager.Symbol(variable, self.var_types[variable])
+#
+#     def get_bounds(self, formula_manager=None):
+#         fm = smt if formula_manager is None else formula_manager
+#         sym = fm.Symbol
+#         bounds = [(sym(v, smt.REAL) >= b[0]) & (sym(v, smt.REAL) <= b[1]) for v, b in self.var_domains.items()]
+#         return fm.And(*bounds)
+#
+#     def __str__(self):
+#         return "({})".format(", ".join(
+#             ("{}[{}, {}]".format(v, *self.var_domains[v]) if self.var_types[v] is smt.REAL else v)
+#             for v in self.variables))
+from pywmi import Domain
 
 
 class Problem(object):

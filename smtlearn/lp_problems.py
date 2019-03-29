@@ -1,8 +1,10 @@
 
 from pysmt.shortcuts import *
-from problem import Domain, Problem
+from problem import Problem
 import string
 import math
+
+from pywmi import Domain
 from smt_print import pretty_print
 
 def xy_domain():
