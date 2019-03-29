@@ -1,8 +1,8 @@
-
-
-from gurobipy import *
-
-#import lplearing
+try:
+    from gurobipy import *
+    gurobi_installed = True
+except ImportError:
+    gurobi_installed = False
 
 from pysmt.shortcuts import Real, LE, Plus, Times, Symbol,And, GE
 from pysmt.typing import REAL
@@ -10,7 +10,6 @@ from smt_print import pretty_print
 from lp_incremental_learner import IncrementalLearner
 
 from z3.z3types import Z3Exception
-
 
 
 class LPLearnermilp(IncrementalLearner):
@@ -24,6 +23,8 @@ class LPLearnermilp(IncrementalLearner):
     #def learn_partial(self, solver, domain, data, new_active_indices):
 
     def learn_partial(self, solver, domain, data1, new_active_indices):
+        if not gurobi_installed:
+            raise RuntimeError("Gurobi is not installed.")
         m = Model("milp")
         #m.setParam('TimeLimit', 60*90)
         m.setParam( 'OutputFlag', False )
