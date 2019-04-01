@@ -1,13 +1,9 @@
 import time
 
 import pysmt.shortcuts as smt
-from pysmt.exceptions import InternalSolverError
 
 import observe
 from learner import Learner
-from gurobipy import *
-
-from z3.z3types import Z3Exception
 
 
 class IncrementalObserver(observe.SpecializedObserver):
@@ -40,9 +36,9 @@ class IncrementalLearner(Learner):
                 formula = self.incremental_loop(domain, data, initial_indices, solver)
         else:
             formula = self.incremental_loop(domain, data, initial_indices, None)
-            #print(formula)
+            # print(formula)
 
-        return  formula
+        return formula
 
     def incremental_loop(self, domain, data, initial_indices, solver):
 
@@ -50,7 +46,7 @@ class IncrementalLearner(Learner):
         all_active_indices = active_indices
 
         self.observer.observe("initial", active_indices)
-        #solver1=self.setup(None,domain,data,all_active_indices)
+        # solver1=self.setup(None,domain,data,all_active_indices)
         print(solver)
         formula = None
         while len(active_indices) > 0:
@@ -60,7 +56,6 @@ class IncrementalLearner(Learner):
             else:
                 formula = self.learn_partial(solver, domain, data, active_indices)
 
-
             solving_time = time.time() - solving_start
 
             selection_start = time.time()
@@ -68,7 +63,7 @@ class IncrementalLearner(Learner):
                 self.selection_strategy.select_active(domain, data, formula, all_active_indices)
             active_indices = list(new_active_indices)
             all_active_indices += active_indices
-            #print(len(all_active_indices))
+            # print(len(all_active_indices))
 
             selection_time = time.time() - selection_start
             self.observer.observe("iteration", formula, active_indices, solving_time, selection_time)
