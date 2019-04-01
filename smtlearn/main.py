@@ -25,7 +25,6 @@ import parse
 from smt_print import pretty_print
 from virtual_data import OneClassStrategy
 
-mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #from k_dnf_learner import KDNFLearner

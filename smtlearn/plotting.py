@@ -11,7 +11,6 @@ from smt_check import SmtChecker
 from smt_print import pretty_print
 from visualize import RegionBuilder
 
-mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 
 

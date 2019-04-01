@@ -1,8 +1,6 @@
 import itertools
 import matplotlib as mpl
 
-mpl.use('TkAgg')
-
 import matplotlib.markers as mark
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
