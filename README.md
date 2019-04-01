@@ -14,7 +14,7 @@ Add gurobipy to Python installation
 - `python setup.py install`
 
 Install Libraries
-- `pip install pebble`
+- `pip install pebble pywmi`
 
 ## Running LP Learning
 - `source env/bin/activate` *[env-only]*

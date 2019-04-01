@@ -3,7 +3,6 @@ import heapq
 import time
 from z3.z3types import Z3Exception
 import pysmt
-from gurobipy import *
 
 
 
