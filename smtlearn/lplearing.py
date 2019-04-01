@@ -660,7 +660,7 @@ def main():
     synthetic = subparsers.add_parser("syn")
     synthetic.add_argument("v", type=int)
     synthetic.add_argument("h", type=int)
-    synthetic.add_argument("method", type=int)
+    synthetic.add_argument("method")
     args = parser.parse_args()
 
     if args.task == "syn":
