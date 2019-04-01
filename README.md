@@ -17,5 +17,6 @@ Install Libraries
 - `pip install pebble`
 
 ## Running LP Learning
-- `source env/bin/activate`
-- 
+- `source env/bin/activate` *[env-only]*
+- `cd smtlearn`
+- `python lplearing.py syn <v> <h> <method>`
