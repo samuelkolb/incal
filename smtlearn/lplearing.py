@@ -1,54 +1,34 @@
 from __future__ import print_function
 
 import argparse
-import itertools
-import math
+import csv
+import json
+import os
 import random
 import time
-from math import sqrt
+from concurrent.futures import TimeoutError
 
-import matplotlib as mpl  # comment
+from pebble import ProcessPool
 from pysmt.shortcuts import *
 
-import plotting
-from generator import get_sample
+import pywmi
 from inc_logging import LoggingObserver
-from incremental_learner import AllViolationsStrategy, RandomViolationsStrategy, IncrementalObserver, \
-    WeightedRandomViolationsStrategy, MaxViolationsStrategy
-from k_cnf_smt_learner import KCnfSmtLearner
+from incremental_learner import IncrementalObserver, \
+    MaxViolationsStrategy
+from lp import LPLearner
+from milp import LPLearnermilp
+from milp_as_in_paper import papermilp
 # from k_dnf_logic_learner import KDNFLogicLearner, GreedyLogicDNFLearner, GreedyMaxRuleLearner
 # from k_dnf_smt_learner import KDnfSmtLearner
 # from k_dnf_greedy_learner import GreedyMilpRuleLearner
 from parameter_free_learner import learn_bottom_up
-from smt_check import SmtChecker
-from experiments import IncrementalConfig
 from parse import smt_to_nested, nested_to_smt
-
-import parse
+from reducedmilp import smallmilp
+from smt_check import SmtChecker
 from smt_print import pretty_print
-import json
-import os
+
 
 # from virtual_data import OneClassStrategy
-
-mpl.use('TkAgg')
-import matplotlib.pyplot as plt
-from lp import LPLearner
-from milp import LPLearnermilp
-from reducedmilp import smallmilp
-import string
-import csv
-import pywmi
-from sklearn.model_selection import KFold, cross_val_score
-from lp_problems import cuben, simplexn, polutionreduction, police
-from lp_wineproblem import importwine,partioning
-from lp_oldfuctions import accuracy
-
-from pebble import ProcessPool
-from concurrent.futures import TimeoutError
-
-
-from milp_as_in_paper import papermilp
 #from milp import rockingthemilp
 
 
@@ -304,11 +284,6 @@ def nptodic(generated):
     return samples
 
 
-
-
-
-from lp_problems import hexagon
-import numpy as np
 # with open("/Users/Elias/Documents/GitHub/smtlearn/output/incal milp/simplexn/theories_learned/D:4S:500.csv") as csv_file:
 #     csv_reader = csv.reader(csv_file, delimiter=',')
 #     line_count = 0
