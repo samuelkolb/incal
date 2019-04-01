@@ -1,18 +1,22 @@
 
+try:
+    from gurobipy import *
+    gurobi_installed = True
+except ImportError:
+    gurobi_installed = False
 
-from gurobipy import *
 
 #from lplearing import sample_half_half,polutionreduction
 
 from pysmt.shortcuts import Real, LE, Plus, Times, Symbol,And, GE
 from pysmt.typing import REAL
-from smt_print import pretty_print
-
-
 
 
 
 def papermilp(domain,data,numberofcosntraints):
+    if not gurobi_installed:
+        raise RuntimeError("Gurobi not installed")
+
     m = Model("milppaper")
     m.setParam('TimeLimit', 60*90)
     m.setParam('OutputFlag', False)
