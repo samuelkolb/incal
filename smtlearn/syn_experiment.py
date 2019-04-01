@@ -15,7 +15,7 @@ class SyntheticExperiment(Experiment):
     file = Parameter(str, None, "The formula filename")
     learner = Parameter(str, None, "The learning algorithm")
     sample_size = Parameter(int, None, "The number of samples to learn from")
-    learned_formula = Result(FNode, None, "The learned formula")
+    learned_formula = Result(object, None, "The learned formula")
     log_file = Result(str, None, "The results log file")
     seed = Result(int, None, "The seed used to solve")
 
