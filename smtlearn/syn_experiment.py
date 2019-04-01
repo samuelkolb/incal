@@ -40,7 +40,7 @@ class SyntheticExperiment(Experiment):
 
         formula = self.formula()
         samples = uniform(formula.domain, self["sample_size"])
-        labels = evaluate(formula.domain, formula, samples)
+        labels = evaluate(formula.domain, formula.support, samples)
         data = SyntheticExperiment.np_to_dict(formula.domain, samples, labels)
         seed = random.randint(0, 10000000)
         self["seed"] = seed
