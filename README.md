@@ -14,7 +14,7 @@ Add gurobipy to Python installation
 - `python setup.py install`
 
 Install Libraries
-- `pip install pebble pywmi sklearn`
+- `pip install pebble pywmi sklearn scipy`
 
 ## Running LP Learning
 - `source env/bin/activate` *[env-only]*

@@ -7,11 +7,20 @@ import os
 import random
 import time
 from concurrent.futures import TimeoutError
+from glob import glob
+
+from autodora.observe import ProgressObserver
+from autodora.runner import CommandLineRunner, PrintObserver
+from autodora.sql_storage import SqliteStorage
+from autodora.trajectory import product
+
+from scipy.spatial import ConvexHull
 
 from pebble import ProcessPool
 from pysmt.shortcuts import *
 
 import pywmi
+from genratorsyn import generate_synthetic_formula, Formula
 from inc_logging import LoggingObserver
 from incremental_learner import IncrementalObserver, \
     MaxViolationsStrategy
@@ -23,14 +32,16 @@ from milp_as_in_paper import papermilp
 # from k_dnf_greedy_learner import GreedyMilpRuleLearner
 from parameter_free_learner import learn_bottom_up
 from parse import smt_to_nested, nested_to_smt
+from pywmi import evaluate, Domain, Density
 from reducedmilp import smallmilp
+from pywmi.sample import uniform
 from smt_check import SmtChecker
 from smt_print import pretty_print
 
 
 # from virtual_data import OneClassStrategy
 #from milp import rockingthemilp
-
+from syn_experiment import SyntheticExperiment
 
 
 def evaluate_assignment(problem, assignment):
@@ -200,7 +211,7 @@ def get_dt_weights(m, data):
     return dt_weights
 
 
-def learn_parameter_free(problem, data, seed,method="smt",synthetic=False):
+def learn_parameter_free(problem, data, log_dir_name, method="smt"):
     #feat_x, feat_y = problem.domain.real_vars[:2]# needed for plotting observer
 
     #o = TrackingObserver(random.sample(list(range(len(data))), 20))
@@ -227,12 +238,7 @@ def learn_parameter_free(problem, data, seed,method="smt",synthetic=False):
             learner = LPLearnermilp(_h, MaxViolationsStrategy(1, w))
 
         #change temp to len(data)
-        if synthetic:
-            dir_nameO = "../output/{}/{}/{}/{}/{}/observer{}:{}:{}.csv".format(method,"syn", problem.half_space_count,len(data), seed, len(data),#len(data instead of sh
-                                                                    len(problem.domain.variables), _h)
-        else:
-            dir_nameO = "../output/{}/{}/{}/{}/observer{}:{}:{}.csv".format(method,problem.name, len(data), seed, len(data),#len(data instead of sh
-                                                                     len(problem.domain.variables), _h)
+        log_file = os.path.join(log_dir_name, "{}.csv".format(_h))
 
 
         #img_name = "{}_{}_{}_{}_{}_{}_{}".format(learner.name, len(problem.domain.variables), i, _k, _h, len(data),
@@ -241,7 +247,7 @@ def learn_parameter_free(problem, data, seed,method="smt",synthetic=False):
         #dir_nameP = "../output/{}/{}/{}/{}/".format("syn", problem.half_space_count, len(data), seed, len(data))
         #learner.add_observer(plotting.PlottingObserver(problem.domain, data, dir_nameP, img_name, feat_x, feat_y))
 
-        learner.add_observer(LoggingObserver(dir_nameO, verbose=False))
+        learner.add_observer(LoggingObserver(log_file, verbose=False))
 
         learner.add_observer(o)
 
@@ -250,7 +256,6 @@ def learn_parameter_free(problem, data, seed,method="smt",synthetic=False):
 
         else:
             initial_indices = o.initials
-
 
         learned_theory = learner.learn(problem.domain, data, initial_indices)
 
@@ -654,17 +659,71 @@ def test_synthetic(v, h, method):
     testingsyn(10, [v], sample_sizes, [h], method)
 
 
+def gen_polytope(domain, n, h, ratio, test_sample_count):
+    points = uniform(domain, n)
+    convex_hull = ConvexHull(points)
+    equations = convex_hull.equations
+    inequalities = []
+    for i in range(len(equations)):
+        inequality = Real(equations[i, -1].item())
+        for j in range(len(domain.real_vars)):
+            inequality += domain.get_symbol(domain.real_vars[j]) * Real(equations[i, j].item())
+        inequalities.append(inequality <= Real(0))
+    test_samples = uniform(domain, test_sample_count)
+    convex_hull_formula = And(*random.sample(inequalities, h))
+    labels = evaluate(domain, convex_hull_formula, test_samples)
+    if 1 - ratio <= sum(labels) / len(labels) <= ratio:
+        print(sum(labels) / len(labels))
+        return convex_hull_formula
+    else:
+        print("Failed")
+        raise RuntimeError()
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="task")
+
     synthetic = subparsers.add_parser("syn")
-    synthetic.add_argument("v", type=int)
-    synthetic.add_argument("h", type=int)
+    synthetic.add_argument("dir")
     synthetic.add_argument("method")
+
+    generator = subparsers.add_parser("gen")
+    generator.add_argument("dir")
+    generator.add_argument("v", type=int)
+    generator.add_argument("h", type=int)
+    generator.add_argument("s", type=int)
+    generator.add_argument("-n", default=1, type=int)
+
     args = parser.parse_args()
 
     if args.task == "syn":
-        test_synthetic(args.v, args.h, args.method)
+        files = list(glob(os.path.join(args.dir, "*.json")))
+        file_dict = {"file": files}
+        sample_size_dict = {"sample_size": [20, 30, 40, 50, 100, 200, 300, 400, 500]}
+        learner_dict = {"learner": [args.method]}
+        settings = product(file_dict, sample_size_dict, learner_dict)
+        trajectory = SyntheticExperiment.explore("syn", settings)
+        storage = SqliteStorage()
+        dispatcher = ProgressObserver()
+        dispatcher.add_observer(PrintObserver())
+        CommandLineRunner(trajectory, storage, processes=1, timeout=1000, observer=dispatcher).run()
+
+    elif args.task == "gen":
+        v, s, h, n = args.v, args.s, args.h, args.n
+        sample_count = 10000
+        results = 0
+        domain = Domain.make([], ["x{}".format(i) for i in range(v)], real_bounds=(0, 1))
+        while results < args.n:
+            seed = random.randint(0, 1000000000)
+            try:
+                random.seed(seed)
+                formula = gen_polytope(domain, s, h, 0.7, sample_count)
+                Formula(domain, formula).to_file(os.path.join(args.dir, "syn_{}_{}_{}_{}.json".format(v, h, s, seed)))
+                results += 1
+            except RuntimeError:
+                pass
+
 
     #print(testing(1,[2],[50],cuben,"bigmilp"))
     #print(testingpractical(1,[50],polutionreduction,"milp"))
