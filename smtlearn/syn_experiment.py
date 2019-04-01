@@ -50,7 +50,7 @@ class SyntheticExperiment(Experiment):
         if not os.path.exists(log_file_name):
             os.makedirs(log_file_name)
         self["log_file"] = log_file_name
-        self["learned_formula"] = learn_parameter_free(formula.support, data, log_file_name, self["learner"])
+        self["learned_formula"] = learn_parameter_free(formula, data, log_file_name, self["learner"])
 
 
 SyntheticExperiment.enable_cli()
