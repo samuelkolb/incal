@@ -1,4 +1,8 @@
-from gurobipy import *
+try:
+    from gurobipy import *
+    gurobi_installed = True
+except ImportError:
+    gurobi_installed = False
 
 #from lplearing import sample_half_half,polutionreduction
 
@@ -11,6 +15,9 @@ from smt_print import pretty_print
 
 
 def smallmilp(domain,data,numberofcosntraints):
+    if not gurobi_installed:
+        raise RuntimeError("Gurobi not installed")
+
     m = Model("milppaper")
     m.setParam('TimeLimit', 60*90)
     m.setParam('OutputFlag', False)
