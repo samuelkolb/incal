@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import argparse
 import itertools
 import math
 import random
@@ -673,39 +674,58 @@ def testingsyn(nbseeds, numberofvariables, nbsamplesize, numberofhalfspaces, inc
 #seeds,vars,samplesize,halfspaces
 
 
-#print(testing(1,[2],[50],cuben,"bigmilp"))
-print(testingpractical(1,[50],polutionreduction,"milp"))
+def test_synthetic(v, h, method):
+    sample_sizes = [20, 30, 40, 50, 100, 200, 300, 400, 500]
+    testingsyn(10, [v], sample_sizes, [h], method)
 
 
-# testing(10,[4],[400,500],cuben,"bigmilp")
-# testing(10,[4],[400,500],simplexn,"bigmilp")
-# testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"bigmilp")
-# testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"bigmilp")
-#
-# testingpractical(10,[400,500,1000,2000],police,"bigmilp")
-# testingpractical(10,[400,500,1000,2000],polutionreduction(),"bigmilp")
-#
-# testing(10,[5,6],[200,300,400,500],cuben,"smt")
-# testing(10,[5,6],[200,300,400,500],simplexn,"smt")
+def main():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="task")
+    synthetic = subparsers.add_parser("syn")
+    synthetic.add_argument("v", type=int)
+    synthetic.add_argument("h", type=int)
+    synthetic.add_argument("method", type=int)
+    args = parser.parse_args()
 
-#
-# testing(10,[5,6],[200,300,400,500],cuben,"milp")
-# testing(10,[5,6],[200,300,400,500],simplexn,"milp")
-#
-#
-# testing(10,[4],[400,500],cuben,"smallmilp")
-# testing(10,[4],[400,500],simplexn,"smallmilp")
+    if args.task == "syn":
+        test_synthetic(args.v, args.h, args.method)
 
-# testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"smallmilp")
-# testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"smallmilp")
-# testingpractical(10,[400,500,1000,2000],police,"smallmilp")
-# testingpractical(10,[400,500,1000,2000],polutionreduction(),"smallmilp")
-
-testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"smt")
-#testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"milp")
-
-#testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"smt")
-#testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"milp")
-random.seed(65)
+    #print(testing(1,[2],[50],cuben,"bigmilp"))
+    #print(testingpractical(1,[50],polutionreduction,"milp"))
 
 
+    # testing(10,[4],[400,500],cuben,"bigmilp")
+    # testing(10,[4],[400,500],simplexn,"bigmilp")
+    # testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"bigmilp")
+    # testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"bigmilp")
+    #
+    # testingpractical(10,[400,500,1000,2000],police,"bigmilp")
+    # testingpractical(10,[400,500,1000,2000],polutionreduction(),"bigmilp")
+    #
+    # testing(10,[5,6],[200,300,400,500],cuben,"smt")
+    # testing(10,[5,6],[200,300,400,500],simplexn,"smt")
+
+    #
+    # testing(10,[5,6],[200,300,400,500],cuben,"milp")
+    # testing(10,[5,6],[200,300,400,500],simplexn,"milp")
+    #
+    #
+    # testing(10,[4],[400,500],cuben,"smallmilp")
+    # testing(10,[4],[400,500],simplexn,"smallmilp")
+
+    # testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"smallmilp")
+    # testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"smallmilp")
+    # testingpractical(10,[400,500,1000,2000],police,"smallmilp")
+    # testingpractical(10,[400,500,1000,2000],polutionreduction(),"smallmilp")
+
+    # testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"smt")
+    #testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"milp")
+
+    #testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"smt")
+    #testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"milp")
+    # random.seed(65)
+
+
+if __name__ == '__main__':
+    main()
