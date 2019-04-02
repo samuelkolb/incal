@@ -687,6 +687,7 @@ def main():
     synthetic = subparsers.add_parser("syn")
     synthetic.add_argument("dir")
     synthetic.add_argument("-s", "--sample_size", type=int, default=None)
+    synthetic.add_argument("-t", "--timeout", type=int, default=None)
     synthetic.add_argument("method")
 
     generator = subparsers.add_parser("gen")
@@ -708,7 +709,7 @@ def main():
         storage = SqliteStorage()
         dispatcher = ProgressObserver()
         dispatcher.add_observer(PrintObserver())
-        CommandLineRunner(trajectory, storage, processes=1, timeout=1000, observer=dispatcher).run()
+        CommandLineRunner(trajectory, storage, processes=1, timeout=1000 if args.timeout is None else args.timeout, observer=dispatcher).run()
 
     elif args.task == "gen":
         v, s, h, n = args.v, args.s, args.h, args.n
