@@ -686,6 +686,7 @@ def main():
 
     synthetic = subparsers.add_parser("syn")
     synthetic.add_argument("dir")
+    synthetic.add_argument("-s", "--sample_size", type=int, default=None)
     synthetic.add_argument("method")
 
     generator = subparsers.add_parser("gen")
@@ -700,7 +701,7 @@ def main():
     if args.task == "syn":
         files = list(glob(os.path.join(args.dir, "*.json")))
         file_dict = {"file": files}
-        sample_size_dict = {"sample_size": [20, 30, 40, 50, 100, 200, 300, 400, 500]}
+        sample_size_dict = {"sample_size": [args.sample_size] if args.sample_size is not None else [20, 30, 40, 50, 100, 200, 300, 400, 500]}
         learner_dict = {"learner": [args.method]}
         settings = product(file_dict, sample_size_dict, learner_dict)
         trajectory = SyntheticExperiment.explore("syn", settings)
