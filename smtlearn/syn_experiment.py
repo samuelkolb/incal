@@ -50,7 +50,11 @@ class SyntheticExperiment(Experiment):
         if not os.path.exists(log_file_name):
             os.makedirs(log_file_name)
         self["log_file"] = log_file_name
-        self["learned_formula"] = learn_parameter_free(formula, data, log_file_name, self["learner"])
+        if self["learner"] == "milpcs":
+            from milp_as_in_paper import papermilp
+            self["learned_formula"] = papermilp(formula.domain, data, self.h())
+        else:
+            self["learned_formula"] = learn_parameter_free(formula, data, log_file_name, self["learner"])
 
 
 SyntheticExperiment.enable_cli()
