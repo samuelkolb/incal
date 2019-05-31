@@ -731,22 +731,19 @@ def main():
     #print(testingpractical(1,[50],polutionreduction,"milp"))
 
 
-    # testing(10,[4],[400,500],cuben,"bigmilp")
-    # testing(10,[4],[400,500],simplexn,"bigmilp")
-    # testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"bigmilp")
-    # testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"bigmilp")
+    # testing(10,[4],[400,500],cuben,"bigmilp")  # TODO
+    # testing(10,[4],[400,500],simplexn,"bigmilp")  # TODO
+    # testing(10,[5, 6],[20,30,40,50,100,200,300,400,500],cuben,"bigmilp")  # TODO
+    # testing(10,[5, 6],[20,30,40,50,100,200,300,400,500],simplexn,"bigmilp")  # TODO
     #
-    # testingpractical(10,[400,500,1000,2000],police,"bigmilp")
-    # testingpractical(10,[400,500,1000,2000],polutionreduction(),"bigmilp")
+    # testingpractical(10,[400,500,1000,2000],police,"bigmilp")  # TODO
+    # testingpractical(10,[400,500,1000,2000],polutionreduction,"bigmilp")  # TODO
     #
-    # testing(10,[5,6],[200,300,400,500],cuben,"smt")
-    # testing(10,[5,6],[200,300,400,500],simplexn,"smt")
+    # testing(10, [5], [200], cuben, "smt")  # TODO
+    # testing(10,[5,6],[200,300,400,500],cuben,"smt")  # TODO
+    # testing(10,[5,6],[200,300,400,500],simplexn,"smt")  # TODO
+    # testing(10, [5, 6], [200, 300, 400, 500], simplexn, "smt")  # TODO
 
-    #
-    # testing(10,[5,6],[200,300,400,500],cuben,"milp")
-    # testing(10,[5,6],[200,300,400,500],simplexn,"milp")
-    #
-    #
     # testing(10,[4],[400,500],cuben,"smallmilp")
     # testing(10,[4],[400,500],simplexn,"smallmilp")
 
@@ -756,7 +753,7 @@ def main():
     # testingpractical(10,[400,500,1000,2000],polutionreduction(),"smallmilp")
 
     # testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"smt")
-    #testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"milp")
+    # testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"milp")
 
     #testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"smt")
     #testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"milp")
