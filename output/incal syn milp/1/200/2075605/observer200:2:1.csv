@@ -1,4 +1,0 @@
-{"type": "initial", "indices": [40, 127, 93, 80, 96, 193, 179, 88, 144, 108, 46, 105, 143, 182, 128, 68, 187, 118, 129, 123]}
-{"type": "update", "theory": "(<= (+ (* (const real 136.46339078227538) (var real r0)) (* (const real -91.44046119151267) (var real r1))) (const real 12.161592912030983))", "indices": [199], "solving_time": 0.0072612762451171875, "selection_time": 0.011401176452636719}
-{"type": "update", "theory": "(<= (+ (* (const real 195.2027881473134) (var real r0)) (* (const real -133.2473348190465) (var real r1))) (const real 16.65830053239995))", "indices": [26], "solving_time": 0.004275083541870117, "selection_time": 0.012229204177856445}
-{"type": "update", "theory": "(<= (+ (* (const real 221.8088032348494) (var real r0)) (* (const real -152.18376182364045) (var real r1))) (const real 18.695084635721173))", "indices": [], "solving_time": 0.004248857498168945, "selection_time": 0.012178182601928711}

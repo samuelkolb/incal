@@ -1,0 +1,2 @@
+{"type": "initial", "indices": [310]}
+{"type": "update", "theory": "(const bool True)", "indices": [306], "solving_time": 0.01044607162475586, "selection_time": 0.004854679107666016}

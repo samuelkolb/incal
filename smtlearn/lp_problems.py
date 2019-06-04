@@ -25,9 +25,11 @@ def simple_2DProblem():
 
     l.append(0.3*x+2*y<= 0.75)
     l.append(2*y + 0.5* x <= 2)
+    l.append(x <= 0.5)
     theory = And(i for i in l)
 
     return Problem(domain, theory, "simple_2DProblem")
+
 
 def hexagon():
     domain=xy_domain()
@@ -53,13 +55,13 @@ def simple_3DProblem():
 
 def cuben(n):
 
-    def normilisation(i,x):
+    def normalisation(i,x):
         return (x-(i-2.7))/((i+2*2.7)-(i-2.7))
 
     variables=[]
     var_types={}
     var_domains={}
-    l=[]
+    constraints=[]
     letters = list(string.ascii_lowercase)
 
     for i in letters[:n]:
@@ -70,24 +72,24 @@ def cuben(n):
     domain= Domain(variables, var_types, var_domains)
     counter=2
     a=domain.get_symbol("a")
-    l.append(a>=normilisation(1,1))
-    l.append(a<=normilisation(1,(1+2.7)))
+    constraints.append(a>=normalisation(1,1))
+    constraints.append(a<=normalisation(1,(1+2.7)))
 
     for i in letters[1:n]:
         r= domain.get_symbol(i)
-        l.append(r>=normilisation(counter,counter))
-        l.append(r<normilisation(counter,(counter+2.7)))
+        constraints.append(r>=normalisation(counter,counter))
+        constraints.append(r<normalisation(counter,(counter+2.7)))
         counter=counter+1
 
-    theory=And(i for i in l)
+    theory=And(i for i in constraints)
     pretty_print(theory)
     return Problem(domain,theory,"cuben")
 
 
 def simplexn(dimension):
     count=0
-    l=[]
-    def normilisation(x):
+    constraints=[]
+    def normalisation(x):
         return (x+1)/((2+2.7)-1)
     variables=[]
     var_types={}
@@ -102,7 +104,7 @@ def simplexn(dimension):
 
     domain= Domain(variables, var_types, var_domains)
     s=[Symbol(s, REAL) for s in domain.variables]
-    l.append(Plus(s)<=normilisation(2.7))
+    constraints.append(Plus(s)<=normalisation(2.7))
 
     for a in letters[:dimension]:
         count+=1
@@ -110,10 +112,10 @@ def simplexn(dimension):
         for b in letters[count:dimension]:
             y=domain.get_symbol(b)
 
-            l.append(x*normilisation(1/math.tan(math.pi/12))-y*normilisation(math.tan(math.pi/12))>=0)
-            l.append(y*normilisation((1/math.tan(math.pi/12)))-x*((math.tan(math.pi/12)))>=0)
+            constraints.append(x*normalisation(1/math.tan(math.pi/12))-y*normalisation(math.tan(math.pi/12))>=0)
+            constraints.append(y*normalisation((1/math.tan(math.pi/12)))-x*((math.tan(math.pi/12)))>=0)
 
-    theory = And(i for i in l)
+    theory = And(i for i in constraints)
     return Problem(domain,theory,"simplexn")
 
 def blending():
@@ -126,20 +128,20 @@ def blending():
     var_domains={"x1r":(0,1),"x2r":(0,1),"x3r":(0,1),"x1p":(0,1),"x2p":(0,1),"x3p":(0,1)}
     domain= Domain(variables, var_types, var_domains)
     x1r,x2r,x3r,x1p,x2p,x3p=(domain.get_symbol(i)for i in ["x1r","x2r","x3r","x1p","x2p","x3p"])
-    l=[]
+    constraints=[]
 
-    l.append(x1r+x1p<=normalization(50))
-    l.append(x2r+x2p<=normalization(100))
-    l.append(x3r+x3p<=normalization(100))
-    l.append(0.7*x1r-0.3*x2r-0.3*x3r<=0)
-    l.append(-0.4*x1r+0.6*x2r-0.4*x3r>=0)
-    l.append(-0.2 * x1r - 0.2 * x2r +0.8 * x3r <= 0)
-    l.append(0.75 * x1p - 0.25 * x2p -0.25 * x3p >= 0)
-    l.append(-0.4 * x1p + 0.6 * x2p - 0.4 * x3p <= 0)
-    l.append(-0.3 * x1p -0.3 * x2p + 0.7 * x3p <= 0)
-    l.append(x1r+x2r+x3r>=normalization(100))
+    constraints.append(x1r+x1p<=normalization(50))
+    constraints.append(x2r+x2p<=normalization(100))
+    constraints.append(x3r+x3p<=normalization(100))
+    constraints.append(0.7*x1r-0.3*x2r-0.3*x3r<=0)
+    constraints.append(-0.4*x1r+0.6*x2r-0.4*x3r>=0)
+    constraints.append(-0.2 * x1r - 0.2 * x2r +0.8 * x3r <= 0)
+    constraints.append(0.75 * x1p - 0.25 * x2p -0.25 * x3p >= 0)
+    constraints.append(-0.4 * x1p + 0.6 * x2p - 0.4 * x3p <= 0)
+    constraints.append(-0.3 * x1p -0.3 * x2p + 0.7 * x3p <= 0)
+    constraints.append(x1r+x2r+x3r>=normalization(100))
 
-    theory = And(i for i in l)
+    theory = And(i for i in constraints)
     return Problem(domain,theory,"blending")
 
 
@@ -150,81 +152,37 @@ def police():
     var_domains={"x1":(0,1),"x2":(0,1),"x3":(0,1),"x4":(0,1),"x5":(0,1)}
     domain= Domain(variables, var_types, var_domains)
     x1,x2,x3,x4,x5=(domain.get_symbol(i)for i in ["x1","x2","x3","x4","x5"])
-    l=[]
+    constraints=[]
 
-    l.append(x1>=48/200)
-    l.append(x1+x2>=79/200)
-    l.append(x1+x2>=65/200)
-    l.append(x1+x2+x3>=87/200)
-    l.append(x2+x3>=64/200)
-    l.append(x3+x4>=73/200)
-    l.append(x3+x4>=82/200)
-    l.append(x4>=43/200)
-    l.append(x4+x5>=52/200)
-    l.append(x5>=15/200)
+    constraints.append(x1>=48/200)
+    constraints.append(x1+x2>=79/200)
+    constraints.append(x1+x2>=65/200)
+    constraints.append(x1+x2+x3>=87/200)
+    constraints.append(x2+x3>=64/200)
+    constraints.append(x3+x4>=73/200)
+    constraints.append(x3+x4>=82/200)
+    constraints.append(x4>=43/200)
+    constraints.append(x4+x5>=52/200)
+    constraints.append(x5>=15/200)
 
-    theory = And(i for i in l)
-    return Problem(domain,theory,"police")
-
-def police2():
-
-    variables=["x1","x2","x3","x4","x5"]
-    var_types={"x1":REAL,"x2":REAL,"x3":REAL,"x4":REAL,"x5":REAL}
-    var_domains={"x1":(0,1),"x2":(0,1),"x3":(0,1),"x4":(0,1),"x5":(0,1)}
-    domain= Domain(variables, var_types, var_domains)
-    x1,x2,x3,x4,x5=(domain.get_symbol(i)for i in ["x1","x2","x3","x4","x5"])
-    l=[]
-
-    l.append(x1+0*x2+0*x3+0*x4+0*x5>=48/200)
-    l.append(x1+x2+0*x3+0*x4+0*x5>=79/200)
-    l.append(x1+x2+0*x3+0*x4+0*x5>=65/200)
-    l.append(x1+x2+x3+0*x4+0*x5>=87/200)
-    l.append(0*x1+x2+x3+0*x4+0*x5>=64/200)
-    l.append(0*x1+0*x2+x3+x4+0*x5>=73/200)
-    l.append(0*x1+0*x2+x3+x4+0*x5>=82/200)
-    l.append(0*x1+0*x2+0*x3+x4+0*x5>=43/200)
-    l.append(0*x1+0*x2+0*x3+x4+x5>=52/200)
-    l.append(0*x1+0*x2+0*x3+0*x4+x5>=15/200)
-
-    theory = And(i for i in l)
-    return Problem(domain,theory,"police")
-
-def police3():
-
-    variables=["x1","x2","x3","x4","x5"]
-    var_types={"x1":REAL,"x2":REAL,"x3":REAL,"x4":REAL,"x5":REAL}
-    var_domains={"x1":(0,1),"x2":(0,1),"x3":(0,1),"x4":(0,1),"x5":(0,1)}
-    domain= Domain(variables, var_types, var_domains)
-    x1,x2,x3,x4,x5=(domain.get_symbol(i)for i in ["x1","x2","x3","x4","x5"])
-    l=[]
-
-    l.append(x1+0*x2+0*x3+0*x4+0*x5>=48)
-    l.append(x1+x2+0*x3+0*x4+0*x5>=79)
-    l.append(x1+x2+0*x3+0*x4+0*x5>=65)
-    l.append(x1+x2+x3+0*x4+0*x5>=87)
-    l.append(0*x1+x2+x3+0*x4+0*x5>=64)
-    l.append(0*x1+0*x2+x3+x4+0*x5>=73)
-    l.append(0*x1+0*x2+x3+x4+0*x5>=82)
-    l.append(0*x1+0*x2+0*x3+x4+0*x5>=43)
-    l.append(0*x1+0*x2+0*x3+x4+x5>=52)
-    l.append(0*x1+0*x2+0*x3+0*x4+x5>=15)
-
-    theory = And(i for i in l)
+    theory = And(i for i in constraints)
     return Problem(domain,theory,"police")
 
 
-def polutionreduction():
+
+
+def pollutionreduction():
 
     variables=["x1","x2","x3","x4","x5","x6"]
     var_types={"x1":REAL,"x2":REAL,"x3":REAL,"x4":REAL,"x5":REAL,"x6":REAL}
     var_domains={"x1":(0,1),"x2":(0,1),"x3":(0,1),"x4":(0,1),"x5":(0,1),"x6":(0,1)}
     domain= Domain(variables, var_types, var_domains)
     x1,x2,x3,x4,x5,x6=(domain.get_symbol(i)for i in ["x1","x2","x3","x4","x5","x6"])
-    l=[]
+    constraints=[]
 
-    l.append(12*x1+9*x2+25*x3+20*x4+17*x5+13*x6>=60)
-    l.append(35 * x1 + 42 * x2 + 18 * x3 + 31 * x4 + 56 * x5 + 49 * x6 >= 150)
-    l.append(37 * x1 + 53 * x2 + 28 * x3 + 24 * x4 + 29 * x5 + 20 * x6 >= 125)
+    constraints.append(12*x1+9*x2+25*x3+20*x4+17*x5+13*x6>=60)
+    constraints.append(35 * x1 + 42 * x2 + 18 * x3 + 31 * x4 + 56 * x5 + 49 * x6 >= 150)
+    constraints.append(37 * x1 + 53 * x2 + 28 * x3 + 24 * x4 + 29 * x5 + 20 * x6 >= 125)
 
-    theory = And(i for i in l)
+    theory = And(i for i in constraints)
     return Problem(domain,theory,"polution")

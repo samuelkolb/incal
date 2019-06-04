@@ -36,11 +36,9 @@ class IncrementalLearner(Learner):
     def learn(self, domain, data, initial_indices=None):
         if self.smt_solver:
             with smt.Solver() as solver:
-                print("here")
                 formula = self.incremental_loop(domain, data, initial_indices, solver)
         else:
             formula = self.incremental_loop(domain, data, initial_indices, None)
-            #print(formula)
 
         return  formula
 
@@ -50,8 +48,6 @@ class IncrementalLearner(Learner):
         all_active_indices = active_indices
 
         self.observer.observe("initial", active_indices)
-        #solver1=self.setup(None,domain,data,all_active_indices)
-        print(solver)
         formula = None
         while len(active_indices) > 0:
             solving_start = time.time()
@@ -64,11 +60,9 @@ class IncrementalLearner(Learner):
             solving_time = time.time() - solving_start
 
             selection_start = time.time()
-            new_active_indices = \
-                self.selection_strategy.select_active(domain, data, formula, all_active_indices)
+            new_active_indices = self.selection_strategy.select_active(domain, data, formula, all_active_indices)
             active_indices = list(new_active_indices)
             all_active_indices += active_indices
-            #print(len(all_active_indices))
 
             selection_time = time.time() - selection_start
             self.observer.observe("iteration", formula, active_indices, solving_time, selection_time)

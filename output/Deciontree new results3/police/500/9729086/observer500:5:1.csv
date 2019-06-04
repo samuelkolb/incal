@@ -1,2 +1,0 @@
-{"type": "initial", "indices": [367, 381, 191, 267, 274, 445, 442, 368, 388, 475, 427, 334, 12, 8, 443, 25, 230, 331, 252, 288]}
-{"type": "update", "theory": "(<= (+ (* (const real -157.1464737912464) (var real x1)) (* (const real -174.14627817587004) (var real x2)) (* (const real 13.756525561412724) (var real x3)) (* (const real -80.37959151923043) (var real x4)) (* (const real -8.264480566527384) (var real x5))) (const real -170.83106444123314))", "indices": [226], "solving_time": 0.10884499549865723, "selection_time": 0.055474042892456055}

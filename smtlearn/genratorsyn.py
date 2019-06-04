@@ -116,6 +116,7 @@ class SyntheticData(Exportable):
 
 def generate_half_space_sample(domain, real_count):
     samples = uniform(domain, real_count)
+
     coefficients, offset = Learner.fit_hyperplane(domain, samples)
     coefficients = [smt.Real(float(coefficients[i][0])) * domain.get_symbol(domain.real_vars[i]) for i in
                     range(real_count)]
@@ -175,7 +176,7 @@ class Generator(object):
         self.max_ratio = max_ratio
         self.seed = seed
         self.prefix = prefix
-        self.max_tries = 1000
+        self.max_tries = 100000
 
     @property
     def bool_count(self):
@@ -204,15 +205,15 @@ class Generator(object):
 
     def get_half_spaces(self, samples):
         half_spaces = []
-        print("Generating half spaces: ", end="")
+        #print("Generating half spaces: ", end="")
         if self.real_count > 0:
             while len(half_spaces) < self.h:
                 half_space = generate_half_space_sample(self.domain, self.real_count)
                 labels = evaluate(self.domain, half_space, samples)
                 half_spaces.append((half_space, labels))
-                print("y", end="")
+               # print("y", end="")
 
-        print()
+        #print()
         return half_spaces
 
     def get_term(self, literal_pool):
@@ -227,7 +228,7 @@ class Generator(object):
             for _, labels in literals:
                 prev_size = sum(covered)
                 covered = np.logical_or(covered, labels)
-                if (sum(covered) - prev_size) / self.sample_count >= 0.05:
+                if (sum(covered) - prev_size) / self.sample_count >= 0.05:#5
                     significant_literals += 1
 
             if significant_literals == self.l:  # & test_ratio(covered):
@@ -285,18 +286,21 @@ class Generator(object):
 
     def generate_lp(self):
         for i in range(self.max_tries):
-            print("Generating LP...")
+            #print("Generating LP...")
             samples = self.get_samples()
             half_spaces = self.get_half_spaces(samples)
-            print([(v, len(l)) for v, l in half_spaces])
 
             labels = evaluate(self.domain, smt.TRUE(), samples)
             formula = smt.TRUE()
             cutoff = True
-
+            c=1
             for hs, l in half_spaces:
+                #print(c)
+                c=c+1
                 new_labels = np.logical_and(labels, l)
-                if sum(new_labels) <= sum(labels) - len(labels) * 0.05:
+
+                if (sum(labels)-sum(new_labels)) >= len(labels)  * 0.05:
+                    #print("TRUE",c)
                     formula = formula & hs
                     labels = new_labels
                 else:
@@ -305,7 +309,7 @@ class Generator(object):
 
             if cutoff and self.test_ratio(labels):
                 return SyntheticFormula(self.domain, formula, "cnf", self.k, self.l, self.h, self.get_name())
-            print("Retry")
+            #print("Retry")
 
         raise RuntimeError("Could not generate LP within {} tries".format(self.max_tries))
 

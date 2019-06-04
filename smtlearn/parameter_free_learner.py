@@ -47,17 +47,14 @@ def learn_bottom_up(data, learn_f, w_k, w_h, init_k=1, init_h=0, max_k=None, max
         k, h = frontier.pop()
         print("Attempting to solve with k={} and h={}".format(k, h))
         start = time.time()
-        #pool = Pool(1)
 
         try:
             solution = learn_f(data, i, k, h)
             print("Found solution after {:.2f}s".format(time.time() - start))
         except Z3Exception:
-            print("2Found no solution after {:.2f}s".format(time.time() - start))
+            print("Found no solution after {:.2f}s".format(time.time() - start))
         except pysmt.exceptions.InternalSolverError:
             print("Found no solution after {:.2f}s".format(time.time() - start))
-        #except AttributeError:
-         #   print("1Found no solution after {:.2f}s".format(time.time() - start))
         if max_k is None or k + 1 <= max_k:
             frontier.push(k + 1, h)
         if max_h is None or h + 1 <= max_h:

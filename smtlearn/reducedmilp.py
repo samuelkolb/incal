@@ -1,10 +1,8 @@
 from gurobipy import *
 
-#from lplearing import sample_half_half,polutionreduction
 
 from pysmt.shortcuts import Real, LE, Plus, Times, Symbol,And, GE
 from pysmt.typing import REAL
-from smt_print import pretty_print
 
 
 
@@ -17,18 +15,15 @@ def smallmilp(domain,data,numberofcosntraints):
     #constants
     n_c=numberofcosntraints #number of constraint #i
     n_v=len(domain.real_vars) #number of varaibles #j
-    n_e=len(data)#number of examples len(data) #k
+    n_e=len(data)#number of examples
     bigm=10000000
     ep=1
     wmax=1000
     cmax=1000
     c_0=1
-    c_j=c_0+(1-c_0)#add compelxity here
 
 
     v_j_k = [[row[v] for v in domain.real_vars] for row, _  in data]
-    #v_j_k = [[row[v] for v in var] for row, _  in data]
-    labels = [row[1] for row in data]
 
     #variables
 
@@ -85,12 +80,6 @@ def smallmilp(domain,data,numberofcosntraints):
     m.optimize()
 
 
-    if m.status ==  GRB.Status.OPTIMAL:
-
-        print("w_i_j[constrain][varaiable]")
-        for i in range(n_c):
-            #print('\t%s' %([w_i_j[i][j].varname for j in range(n_v) ]))
-            print("{}<={}".format([[w_i_j[i][j].varname, w_i_j[i][j].x] for j in range(n_v)],c_i[i].x))
 
     inequalitys=[]
     for i in range(n_c):
@@ -101,8 +90,6 @@ def smallmilp(domain,data,numberofcosntraints):
 
     theory=And(t for t in inequalitys)
 
-
-    #m.write("/Users/Elias/Desktop/e.lp")
 
     if m.status== GRB.Status.TIME_LIMIT:
         return theory, len(theory.get_atoms()),True

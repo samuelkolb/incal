@@ -1,2 +1,0 @@
-{"type": "initial", "indices": [1, 2, 18, 11, 17, 5, 13, 16, 14, 19, 0, 3, 6, 10, 8, 15, 12, 7, 9, 4]}
-{"type": "update", "theory": "(& (<= (+ (* (const real 4.69744925709705) (var real a)) (* (const real 9.105717353971391) (var real b))) (const real 7.760271771589232)) (<= (+ (* (const real 13.721010193715822) (var real a)) (* (const real 12.136995013357312) (var real b))) (const real 12.576140034813706)))", "indices": [], "solving_time": 0.04576897621154785, "selection_time": 2.09808349609375e-05}

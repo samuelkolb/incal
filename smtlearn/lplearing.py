@@ -1,30 +1,21 @@
 from __future__ import print_function
 
-import itertools
-import math
+
 import random
 import time
-from math import sqrt
+
 
 import matplotlib as mpl  # comment
 from pysmt.shortcuts import *
 
 import plotting
-from generator import get_sample
 from inc_logging import LoggingObserver
 from incremental_learner import AllViolationsStrategy, RandomViolationsStrategy, IncrementalObserver, \
     WeightedRandomViolationsStrategy, MaxViolationsStrategy
-from k_cnf_smt_learner import KCnfSmtLearner
-# from k_dnf_logic_learner import KDNFLogicLearner, GreedyLogicDNFLearner, GreedyMaxRuleLearner
-# from k_dnf_smt_learner import KDnfSmtLearner
-# from k_dnf_greedy_learner import GreedyMilpRuleLearner
 from parameter_free_learner import learn_bottom_up
-from problem import Domain, Problem
 from smt_check import SmtChecker
-from experiments import IncrementalConfig
 from parse import smt_to_nested, nested_to_smt
 
-import parse
 from smt_print import pretty_print
 import json
 import os
@@ -32,24 +23,19 @@ import os
 # from virtual_data import OneClassStrategy
 
 mpl.use('TkAgg')
-import matplotlib.pyplot as plt
-from lp import LPLearner
-from milp import LPLearnermilp
+from incalpsmt import LPLearner
+from incalpmilp import LPLearnermilp
 from reducedmilp import smallmilp
-import string
+from pywmi import evaluate, Domain, Density
 import csv
 import pywmi
-from sklearn.model_selection import KFold, cross_val_score
-from lp_problems import cuben, simplexn, polutionreduction, police
-from lp_wineproblem import importwine,partioning
-from lp_oldfuctions import accuracy
+from pywmi.sample import uniform
+from lp_problems import cuben, simplexn, pollutionreduction, police,hexagon,simple_2DProblem
 
 from pebble import ProcessPool
 from concurrent.futures import TimeoutError
-
-
-from milp_as_in_paper import papermilp
-#from milp import rockingthemilp
+from scipy.spatial import ConvexHull
+from milpcs import MILPCS
 
 
 
@@ -64,7 +50,7 @@ def evaluate_assignment2(problem, assignment):
     # return problem.theory.substitute(substitution).simplify().is_true()
     return SmtChecker(assignment).check(problem)
 
-def normilisation_rightsideto1(theory):
+def normalisation_rightside(theory):
     inequalitys = []
     if len(theory.get_atoms()) == 1:
         if theory.arg(1).constant_value() > 0:
@@ -190,24 +176,24 @@ class ParameterObserver:
 
     def __init__(self):
         self.seednumber = 0
-        self.dimensions = 0
+        self.dimension = 0
         self.samplesize = 0
         self.time = 0
         self.numberofconstrains = 0
-        self.numberofconstrainsmodel = 0
+        self.numberofconstraintsmodel = 0
         self.overallruns = []
         self.tpr = 0
         self.tnr = 0
 
     def updating(self):
         self.overallruns.append(
-            [self.seednumber, self.dimensions, self.samplesize, self.time, self.numberofconstrains,
-             self.numberofconstrainsmodel, self.tpr, self.tnr])
+            [self.seednumber, self.dimension, self.samplesize, self.time, self.numberofconstrains,
+             self.numberofconstraintsmodel, self.tpr, self.tnr])
 
-def loadintermedautresult(dic,v):
-    lh=len(os.listdir(dic))-1
-    print(lh)
-    with open(dic+v+str(lh)+".csv") as f:
+def loadintermediatresult(directory, version):
+    lastresult= len(os.listdir(directory)) - 1
+
+    with open(directory + version + str(lastresult) + ".csv") as f:
         data = [json.loads(line) for line in f]
     last = data[-1]
     return nested_to_smt(last["theory"])
@@ -216,14 +202,13 @@ def loadintermedautresult(dic,v):
 
 def get_dt_weights(m, data):
     import dt_selection
-    dt_weights = [min(d.values()) for d in dt_selection.get_distances(m.domain, data)]
+    dt_weights = [min(d.values()) for d in dt_selection.get_distances(m.domain, data)] #sum
     return dt_weights
 
 
 def learn_parameter_free(problem, data, seed,method="smt",synthetic=False):
     #feat_x, feat_y = problem.domain.real_vars[:2]# needed for plotting observer
 
-    #o = TrackingObserver(random.sample(list(range(len(data))), 20))
 
     w = get_dt_weights(problem, data)
     p = zip(range(len(data)), [w[i] for i in range(len(data))])
@@ -234,50 +219,44 @@ def learn_parameter_free(problem, data, seed,method="smt",synthetic=False):
 
     def learn_inc(_data, i, _k, _h):
 
-        w = get_dt_weights(problem, data)
 
-        # learner = LPLearner(_h, RandomViolationsStrategy(10))
-        # learner = LPLearner(_h, WeightedRandomViolationsStrategy(10,w))
-        #out symetries
-        #learner = (_h, MaxViolationsStrategy(1, w))# ,symmetries="n")
+
         if method=="smt":
             learner=LPLearner(_h, MaxViolationsStrategy(1, w))
+            #learner = LPLearner(_h, RandomViolationsStrategy(1))
             #learner = LPLearner(_h, MaxViolationsStrategy(1, w) ,symmetries="n")
         else:
+            #learner = LPLearnermilp(_h, RandomViolationsStrategy(1))
             learner = LPLearnermilp(_h, MaxViolationsStrategy(1, w))
 
-        #change temp to len(data)
         if synthetic:
-            dir_nameO = "../output/{}/{}/{}/{}/{}/observer{}:{}:{}.csv".format(method,"syn", problem.half_space_count,len(data), seed, len(data),#len(data instead of sh
+            dir_nameO = "../output/{}/{}/{}/{}/{}/observer{}:{}:{}.csv".format(method,"syn", len(problem.theory.get_atoms()),len(data), seed, len(data),
                                                                     len(problem.domain.variables), _h)
         else:
-            dir_nameO = "../output/{}/{}/{}/{}/observer{}:{}:{}.csv".format(method,problem.name, len(data), seed, len(data),#len(data instead of sh
+            dir_nameO = "../output/{}/{}/{}/{}/observer{}:{}:{}.csv".format(method,problem.name, len(data), seed, len(data),
                                                                      len(problem.domain.variables), _h)
 
 
         #img_name = "{}_{}_{}_{}_{}_{}_{}".format(learner.name, len(problem.domain.variables), i, _k, _h, len(data),
          #                                        seed)
         #dir_nameP = "../output/{}/{}/{}/".format(problem.name, len(data), seed, len(data))
-        #dir_nameP = "../output/{}/{}/{}/{}/".format("syn", problem.half_space_count, len(data), seed, len(data))
         #learner.add_observer(plotting.PlottingObserver(problem.domain, data, dir_nameP, img_name, feat_x, feat_y))
 
         learner.add_observer(LoggingObserver(dir_nameO, verbose=False))
 
         learner.add_observer(o)
 
-        if len(o.initials) > 20:
+        if len(o.initials) > 20:#20
             initial_indices = random.sample(o.initials, 20)
-
         else:
             initial_indices = o.initials
-
 
         learned_theory = learner.learn(problem.domain, data, initial_indices)
 
         print("Learned theory:\n{}".format(pretty_print(learned_theory)))
         return learned_theory
 
-    return learn_bottom_up(data, learn_inc, 1000000, 1)#,init_h=len(x.get_atoms()))
+    return learn_bottom_up(data, learn_inc, 1000000,1)
 
 
 def learndouble(problem,data,seed):
@@ -293,7 +272,7 @@ def learndouble(problem,data,seed):
     return learn_parameter_free(problem,data,seed,z)
 
 
-def nptodic(generated):
+def dictionary(generated):
     samples=[]
     for s,l in zip(generated.samples, generated.labels):
 
@@ -307,38 +286,10 @@ def nptodic(generated):
 
 
 
-from lp_problems import hexagon
-import numpy as np
-with open("/Users/Elias/Documents/GitHub/smtlearn/output/incal milp/simplexn/theories_learned/D:4S:500.csv") as csv_file:
-    csv_reader = csv.reader(csv_file, delimiter=',')
-    line_count = 0
-    for row in csv_reader:
-        theory_one=nested_to_smt(row[0])
-
-# t=simplexn(4)
-# sample_count=1000000
-# tprl=[]
-# tnrl=[]
-# start = time.time()
-# for i in range(50):
-#     tpr = pywmi.RejectionEngine(t.domain, t.theory, Real(1.0),
-#                                                       sample_count).compute_probability(theory_one)
-#     tnr = pywmi.RejectionEngine(t.domain, ~t.theory, Real(1.0),
-#                                                       sample_count).compute_probability(~theory_one)
-#     tprl.append(tpr)
-#     tnrl.append(tnr)
-#
-# print(time.time()-start)
-# print(np.std(tprl))
-# print(np.std(tnrl))
-# print(np.mean(tprl))
-# print(np.mean(tnrl))
-
-
 
 def testing(nbseeds, nbdimensions, nbsamplesize, modelinput,incal="smt"):
     parameter = ParameterObserver()
-    sample_count = 1000000
+    evalation_sample_count = 1000000
 
     for i in nbdimensions:
 
@@ -362,7 +313,7 @@ def testing(nbseeds, nbdimensions, nbsamplesize, modelinput,incal="smt"):
                     os.makedirs(dir_name_for_seed)
                 print(time.asctime(), i, j, k)
                 parameter.seednumber = parameter.seednumber + 1
-                parameter.dimensions = i
+                parameter.dimension = i
                 parameter.samplesize = j
 
                 parameter.numberofconstrains = len(model.theory.get_atoms())
@@ -377,15 +328,14 @@ def testing(nbseeds, nbdimensions, nbsamplesize, modelinput,incal="smt"):
                     try:
                         result = future.result()
                         learned_theory = result[0]
-                        km = result[1]
-                        numberofconstrains = result[2]
+                        numberofconstraints = result[2]
                         parameter.time = time.time() - start
                     except TimeoutError:
                         dir_nameO = "../output/{}/{}/{}/{}/".format(incal,model.name, len(data), k)
                         dir_run = "observer{}:{}:".format(len(data), len(model.domain.variables))
                         parameter.time = False
-                        learned_theory = loadintermedautresult(dir_nameO, dir_run)
-                        numberofconstrains = len(learned_theory.get_atoms())
+                        learned_theory = loadintermediatresult(dir_nameO, dir_run)
+                        numberofconstraints = len(learned_theory.get_atoms())
                         print("Function took longer than seconds")
                 elif incal == "milp":
                     with ProcessPool() as pool:
@@ -394,40 +344,35 @@ def testing(nbseeds, nbdimensions, nbsamplesize, modelinput,incal="smt"):
                     try:
                         result = future.result()
                         learned_theory = result[0]
-                        km = result[1]
-                        numberofconstrains = result[2]
+                        numberofconstraints = result[2]
                         parameter.time = time.time() - start
                     except TimeoutError:
                         dir_nameO = "../output/{}/{}/{}/{}/".format(incal,model.name, len(data), k)
                         dir_run = "observer{}:{}:".format(len(data), len(model.domain.variables))
                         parameter.time = False
-                        learned_theory = loadintermedautresult(dir_nameO, dir_run)
-                        numberofconstrains = len(learned_theory.get_atoms())
+                        learned_theory = loadintermediatresult(dir_nameO, dir_run)
+                        numberofconstraints = len(learned_theory.get_atoms())
                         print("Function took longer than seconds")
                 elif incal=="smallmilp":
-                    learned_theory, numberofconstrains, timelimit = smallmilp(model.domain, data, 14)
-                     #learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                    learned_theory, numberofconstraints, timelimit = smallmilp(model.domain, data, 14)
                     if timelimit == True:
                         parameter.time = 90*60
 
                     else:
                         parameter.time = time.time() - start
                 elif incal=="bigmilp":
-                    # learned_theory, km, numberofconstrains = learn_parameter_free(model, data, k)
-                    learned_theory, numberofconstrains, timelimit = papermilp(model.domain, data, 14)
-                    # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                    learned_theory, numberofconstraints, timelimit = MILPCS(model.domain, data, 14)
                     if timelimit == True:
                         parameter.time = 90*60
 
                     else:
                         parameter.time = time.time() - start
 
-                parameter.numberofconstrainsmodel = numberofconstrains
-                # parameter.accucy=accucy(theroy=model,theorylearned=theory,data1=adata)
+                parameter.numberofconstraintsmodel = numberofconstraints
                 parameter.tpr = pywmi.RejectionEngine(model.domain, model.theory, Real(1.0),
-                                                      sample_count).compute_probability(learned_theory)
+                                                      evalation_sample_count).compute_probability(learned_theory)
                 parameter.tnr = pywmi.RejectionEngine(model.domain, ~model.theory, Real(1.0),
-                                                      sample_count).compute_probability(~learned_theory)
+                                                      evalation_sample_count).compute_probability(~learned_theory)
 
                 parameter.updating()
                 equationsfound.append([smt_to_nested(learned_theory)])
@@ -444,11 +389,10 @@ def testing(nbseeds, nbdimensions, nbsamplesize, modelinput,incal="smt"):
 
     return parameter.overallruns
 
-#testing(1,[2],[50],cuben,"smallmilp")
 
 def testingpractical(nbseeds, nbsamplesize, modelinput,incal="smt"):
     parameter = ParameterObserver()
-    sample_count = 1000000
+    evalation_sample_count = 1000000
     model = modelinput()
     dir_name_for_equaltions = "../output/{}/{}/{}/".format(incal,model.name, "theories_learned")
     if not os.path.exists(dir_name_for_equaltions):
@@ -471,24 +415,23 @@ def testingpractical(nbseeds, nbsamplesize, modelinput,incal="smt"):
             parameter.samplesize = j
 
             parameter.numberofconstrains = len(model.theory.get_atoms())
-            data = sample_half_half(model, j, k)#change 100 to j
+            data = sample_half_half(model, j, k)
 
             start = time.time()
             if incal == "smt":
                 with ProcessPool() as pool:
-                    future = pool.schedule(learn_parameter_free, args=[model, data, k, incal], timeout=90 * 60)
+                    future = pool.schedule(learn_parameter_free, args=[model, data, k, incal], timeout=60*90)
 
                 try:
                     result = future.result()
                     learned_theory = result[0]
-                    km = result[1]
                     numberofconstrains = result[2]
                     parameter.time = time.time() - start
                 except TimeoutError:
                     dir_nameO = "../output/{}/{}/{}/{}/".format(incal, model.name, len(data), k)
                     dir_run = "observer{}:{}:".format(len(data), len(model.domain.variables))
                     parameter.time = False
-                    learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                    learned_theory = loadintermediatresult(dir_nameO, dir_run)
                     numberofconstrains = len(learned_theory.get_atoms())
                     print("Function took longer than seconds")
             elif incal == "milp":
@@ -498,28 +441,24 @@ def testingpractical(nbseeds, nbsamplesize, modelinput,incal="smt"):
                 try:
                     result = future.result()
                     learned_theory = result[0]
-                    km = result[1]
                     numberofconstrains = result[2]
                     parameter.time = time.time() - start
                 except TimeoutError:
                     dir_nameO = "../output/{}/{}/{}/{}/".format(incal, model.name, len(data), k)
-                    dir_run = "observer{}:{}:".format(len(data), len(model.domain.variables))
+                    dir_run = "observer{}:{}:".format(len(data), j)
                     parameter.time = False
-                    learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                    learned_theory = loadintermediatresult(dir_nameO, dir_run)
                     numberofconstrains = len(learned_theory.get_atoms())
                     print("Function took longer than seconds")
             elif incal == "smallmilp":
                 learned_theory, numberofconstrains, timelimit = smallmilp(model.domain, data, 14)
-                # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
                 if timelimit == True:
                     parameter.time = 90 * 60
 
                 else:
                     parameter.time = time.time() - start
             elif incal == "bigmilp":
-                # learned_theory, km, numberofconstrains = learn_parameter_free(model, data, k)
-                learned_theory, numberofconstrains, timelimit = papermilp(model.domain, data, 14)
-                # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                learned_theory, numberofconstrains, timelimit = MILPCS(model.domain, data, 14)
                 if timelimit == True:
                     parameter.time = 90 * 60
 
@@ -527,17 +466,20 @@ def testingpractical(nbseeds, nbsamplesize, modelinput,incal="smt"):
                     parameter.time = time.time() - start
 
 
-            parameter.numberofconstrainsmodel = numberofconstrains
+            parameter.numberofconstraintsmodel = numberofconstrains
 
+            if learned_theory != None:
+                parameter.tpr = pywmi.RejectionEngine(model.domain, model.theory, Real(1.0),
+                                                  evalation_sample_count).compute_probability(learned_theory)
+                parameter.tnr = pywmi.RejectionEngine(model.domain, ~model.theory, Real(1.0),
+                                                  evalation_sample_count).compute_probability(~learned_theory)
+                equationsfound.append([smt_to_nested(learned_theory)])
+            else:
+                parameter.tpr=0
+                parameter.tnr=0
 
-            parameter.tpr = pywmi.RejectionEngine(model.domain, model.theory, Real(1.0),
-                                                  sample_count).compute_probability(learned_theory)
-            parameter.tnr = pywmi.RejectionEngine(model.domain, ~model.theory, Real(1.0),
-                                                  sample_count).compute_probability(~learned_theory)
-
-            # parameter.accucy=accucy(theroy=model,theorylearned=theory,size=100,seed=k+1)
             parameter.updating()
-            equationsfound.append([smt_to_nested(learned_theory)])
+
 
         dir_name_for_equaltions = "../output/{}/{}/{}/S:{}.csv".format(incal,model.name, "theories_learned", j)
 
@@ -551,15 +493,34 @@ def testingpractical(nbseeds, nbsamplesize, modelinput,incal="smt"):
         writer.writerows(parameter.overallruns)
 
     return parameter.overallruns
-#testingpractical(1,[50],police,"milp")
-#from genratorsyn import generate_synthetic_dataset
-#x=generate_synthetic_dataset("synthetic",0,3,"cnf",2,1,2,500,70)
 
-#d=nptodic(x)
+
+def gen_polytope(domain, n, h, ratio, test_sample_count):
+    points = uniform(domain, n)
+    convex_hull = ConvexHull(points)
+    equations = convex_hull.equations
+    inequalities = []
+    for i in range(len(equations)):
+        inequality = Real(equations[i, -1].item())
+        for j in range(len(domain.real_vars)):
+            inequality += domain.get_symbol(domain.real_vars[j]) * Real(equations[i, j].item())
+        inequalities.append(inequality <= Real(0))
+    test_samples = uniform(domain, test_sample_count)
+    convex_hull_formula = And(*random.sample(inequalities, h))
+    labels = evaluate(domain, convex_hull_formula, test_samples)
+    if 1 - ratio <= sum(labels) / len(labels) <= ratio:
+        print(sum(labels) / len(labels))
+        return convex_hull_formula
+    else:
+        print("Failed")
+        raise RuntimeError()
+
+from genratorsyn import generate_domain
+from problem import Problem
 
 def testingsyn(nbseeds, numberofvariables, nbsamplesize, numberofhalfspaces, incal="smt"):
     #parameter = ParameterObserver()
-    sample_count = 1000000
+    sample_countev = 1000000
     from genratorsyn import generate_synthetic_dataset
     for a in numberofhalfspaces:
         parameter = ParameterObserver()
@@ -582,24 +543,40 @@ def testingsyn(nbseeds, numberofvariables, nbsamplesize, numberofhalfspaces, inc
                     dir_name_for_seed = "../output/{}/{}/{}/{}/{}".format(incal,"syn",a, j, k)
                     if not os.path.exists(dir_name_for_seed):
                         os.makedirs(dir_name_for_seed)
-                    print(time.asctime(), i, j, k)
+                    print(time.asctime(), i, j, k,a)
                     parameter.seednumber = parameter.seednumber + 1
-                    parameter.dimensions = i
+                    parameter.dimension = i
                     parameter.samplesize = j
 
                     parameter.numberofconstrains = a
-                    try:
-                        synmodel = generate_synthetic_dataset("synthetic", 0, i, "cnf", a, 1, a, j, 70)
-                    except RuntimeError:
+
+                    domain = generate_domain(0, i)
+                    sample_count = 10000
+
+                    s=2*(i-1)
+                    formula = None
+
+                    for m in range(1000):
+                        try:
+                            formula = gen_polytope(domain, s, a, 0.7, sample_count)
+                            print("HERE")
+                            break
+                        except RuntimeError:
+                            continue
+
+                    if formula==None:
                         continue
 
-                    data=nptodic(synmodel)
-                    pretty_print(synmodel.formula.support)
+
+                    synmodel = Problem(domain, formula, "Syn")
+                    data=sample(synmodel,j)
+
+
 
                     start = time.time()
                     if incal == "smt":
                         with ProcessPool() as pool:
-                            future = pool.schedule(learn_parameter_free, args=[synmodel.formula, data, k,incal,True], timeout=90*60)
+                            future = pool.schedule(learn_parameter_free, args=[synmodel, data, k,incal,True], timeout=30*60)
 
                         try:
                             result = future.result()
@@ -611,53 +588,54 @@ def testingsyn(nbseeds, numberofvariables, nbsamplesize, numberofhalfspaces, inc
                             dir_nameO = "../output/{}/{}/{}/{}/{}/".format(incal,"syn",a, len(data), k)
                             dir_run = "observer{}:{}:".format(len(data), i)
                             parameter.time = 90*60
-                            learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                            learned_theory = loadintermediatresult(dir_nameO, dir_run)
                             numberofconstrains = len(learned_theory.get_atoms())
                             print("Function took longer than seconds")
                     elif incal == "milp":
                         with ProcessPool() as pool:
-                            future = pool.schedule(learn_parameter_free, args=[synmodel.formula, data, k,incal,True], timeout=90*60)
+                            future = pool.schedule(learn_parameter_free, args=[synmodel, data, k,incal,True], timeout=30*60)
 
                         try:
                             result = future.result()
                             learned_theory = result[0]
-                            km = result[1]
                             numberofconstrains = result[2]
                             parameter.time = time.time() - start
                         except TimeoutError:
                             dir_nameO = "../output/{}/{}/{}/{}/{}/".format(incal,"syn",a, len(data), k)
                             dir_run = "observer{}:{}:".format(len(data), i)
                             parameter.time = 90*60
-                            learned_theory = loadintermedautresult(dir_nameO, dir_run)
+                            learned_theory = loadintermediatresult(dir_nameO, dir_run)
                             numberofconstrains = len(learned_theory.get_atoms())
                             print("Function took longer than seconds")
                     elif incal =="smallmilp":
-                        learned_theory, numberofconstrains, timelimit = smallmilp(synmodel.formula.domain, data, 14)
-                        # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                        learned_theory, numberofconstrains, timelimit = smallmilp(synmodel.theory.domain, data, 14)
                         if timelimit == True:
                             parameter.time = 90 * 60
 
                         else:
                             parameter.time = time.time() - start
                     elif incal =="bigmilp":
-                        # learned_theory, km, numberofconstrains = learn_parameter_free(model, data, k)
-                        learned_theory, numberofconstrains, timelimit = papermilp(synmodel.formula.domain, data, 14)
-                        # learned_theory, numberofconstrains = rockingthemilp(model.domain, data, 14)
+                        learned_theory, numberofconstrains, timelimit = MILPCS(synmodel.theory.domain, data, 14)
                         if timelimit == True:
                             parameter.time = 90*60
 
                         else:
                             parameter.time = time.time() - start
 
-                    parameter.numberofconstrainsmodel = numberofconstrains
-                    # parameter.accucy=accucy(theroy=model,theorylearned=theory,data1=adata)
-                    parameter.tpr = pywmi.RejectionEngine(synmodel.formula.domain, synmodel.formula.support, Real(1.0),
-                                                          sample_count).compute_probability(learned_theory)
-                    parameter.tnr = pywmi.RejectionEngine(synmodel.formula.domain, ~synmodel.formula.support, Real(1.0),
-                                                          sample_count).compute_probability(~learned_theory)
+                    parameter.numberofconstraintsmodel = numberofconstrains
+                    if learned_theory != None:
+                        parameter.tpr = pywmi.RejectionEngine(synmodel.domain,synmodel.theory, Real(1.0),
+                                                              sample_countev).compute_probability(
+                            learned_theory)
+                        parameter.tnr = pywmi.RejectionEngine(synmodel.domain, ~synmodel.theory, Real(1.0),
+                                        sample_countev).compute_probability(
+                            ~learned_theory)
+                        equationsfound.append([smt_to_nested(learned_theory)])
+                    else:
+                        parameter.tpr = 0
+                        parameter.tnr = 0
 
                     parameter.updating()
-                    equationsfound.append([smt_to_nested(learned_theory)])
 
                 dir_name_for_equaltions = "../output/{}/{}/{}/{}/D:{}S:{}.csv".format(incal,"syn",a, "theories_learned", i, j)
                 with open(dir_name_for_equaltions, 'w', newline='') as csvfile:
@@ -671,42 +649,5 @@ def testingsyn(nbseeds, numberofvariables, nbsamplesize, numberofhalfspaces, inc
 
     return parameter.overallruns
 
-#seeds,vars,samplesize,halfspaces
-
-
-#print(testing(1,[2],[50],cuben,"bigmilp"))
-print(testingpractical(1,[50],polutionreduction,"milp"))
-
-
-# testing(10,[4],[400,500],cuben,"bigmilp")
-# testing(10,[4],[400,500],simplexn,"bigmilp")
-# testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"bigmilp")
-# testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"bigmilp")
-#
-# testingpractical(10,[400,500,1000,2000],police,"bigmilp")
-# testingpractical(10,[400,500,1000,2000],polutionreduction(),"bigmilp")
-#
-# testing(10,[5,6],[200,300,400,500],cuben,"smt")
-# testing(10,[5,6],[200,300,400,500],simplexn,"smt")
-
-#
-# testing(10,[5,6],[200,300,400,500],cuben,"milp")
-# testing(10,[5,6],[200,300,400,500],simplexn,"milp")
-#
-#
-# testing(10,[4],[400,500],cuben,"smallmilp")
-# testing(10,[4],[400,500],simplexn,"smallmilp")
-
-# testing(10,[4],[20,30,40,50,100,200,300,400,500],cuben,"smallmilp")
-# testing(10,[4],[20,30,40,50,100,200,300,400,500],simplexn,"smallmilp")
-# testingpractical(10,[400,500,1000,2000],police,"smallmilp")
-# testingpractical(10,[400,500,1000,2000],polutionreduction(),"smallmilp")
-
-#testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"smt")
-#testingsyn(10,[3],[20,30,40,50,100,200,300,400,500],[2,4,8,16,32,84],"milp")
-
-#testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"smt")
-#testingsyn(10,[2,4,8,16,32,82],[20,30,40,50,100,200,300,400,500],[3],"milp")
-random.seed(65)
 
 
