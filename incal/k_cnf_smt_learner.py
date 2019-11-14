@@ -37,7 +37,11 @@ class KCnfSmtLearner(IncrementalLearner):
 
         # Variables
         a_hr = [[smt.Symbol("a_hr[{}][{}]".format(h, r), REAL) for r in range(n_r)] for h in range(n_h_original)]
-        b_h = [smt.Symbol("b_h[{}]".format(h), REAL) for h in range(n_h_original)]
+        if "1" in self.symmetries:
+            b_h = [smt.Real(1.0) for _ in range(n_h_original)]
+        else:
+            b_h = [smt.Symbol("b_h[{}]".format(h), REAL) for h in range(n_h_original)]
+
         s_ch = [[smt.Symbol("s_ch[{}][{}]".format(c, h)) for h in range(n_h)] for c in range(n_c)]
         s_cb = [[smt.Symbol("s_cb[{}][{}]".format(c, b)) for b in range(n_b)] for c in range(n_c)]
 
