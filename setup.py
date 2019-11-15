@@ -19,7 +19,7 @@ VERSION = "0.1.1"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'pywmi', 'numpy', 'typing', 'pysmt', 'matplotlib', 'scikit-learn', 'pickledb'
+    'pywmi', 'numpy', 'typing', 'pysmt', 'matplotlib', 'scikit-learn', 'pickledb', 'autodora'
 ]
 
 # What packages are optional?

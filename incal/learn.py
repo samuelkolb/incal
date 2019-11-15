@@ -41,7 +41,7 @@ class LearnOptions(Options):
 
     @staticmethod
     def domain_extraction(filename):
-        return Density.import_from(filename).domain
+        return Density.from_file(filename).domain
 
     @staticmethod
     def np_extraction(filename):
@@ -64,7 +64,7 @@ class LearnOptions(Options):
         return RandomViolationsStrategy(count)
 
     @staticmethod
-    def select_dt(count):
+    def select_dt(_count):
         return DecisionTreeSelection()
 
     def make_copy(self):
