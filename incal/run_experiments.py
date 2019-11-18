@@ -82,7 +82,7 @@ def main():
                 trajectory,
                 storage,
                 processes=processes,
-                timeout=100,
+                timeout=200,
                 observer=dispatcher,
             ).run()
 
