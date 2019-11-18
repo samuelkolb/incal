@@ -4,21 +4,25 @@ import numpy as np
 from autodora.experiment import Experiment, Parameter, Result, derived
 from typing import Union
 
-from generator import SyntheticFormula
+from incal.generator import SyntheticFormula
 from incal import Formula
-from k_cnf_smt_learner import KCnfSmtLearner
-from learn import learn
-from violations.core import RandomViolationsStrategy
+from incal.k_cnf_smt_learner import KCnfSmtLearner
+from incal.learn import learn
+from incal.violations.core import RandomViolationsStrategy
 
 
 class LearnExperiment(Experiment):
-    formula_filename = Parameter(str, None, "The filename of the (synthetic) formula file")
+    formula_filename = Parameter(
+        str, None, "The filename of the (synthetic) formula file"
+    )
     data_filename = Parameter(str, None, "The filename of the examples")
     labels_filename = Parameter(str, None, "The filename of the labels")
 
     learner = Parameter(str, None, "The type of learner (options: cnf.[mhv1])")
     initial = Parameter(str, "random.20", "The strategy to pick the initial examples")
-    selection = Parameter(str, "random.10", "The strategy to pick the violating examples")
+    selection = Parameter(
+        str, "random.10", "The strategy to pick the violating examples"
+    )
 
     initial_k = Parameter(int, 1, "The initial number of constraints")
     initial_h = Parameter(int, 0, "The initial number of inequalities")
@@ -26,6 +30,7 @@ class LearnExperiment(Experiment):
     cost_k = Parameter(float, 1, "The complexity cost of adding a constraints")
     cost_h = Parameter(float, 1, "The complexity cost of adding an inequality")
 
+    seed = Parameter(int, None, "The seed to run the experiment with")
     log = Parameter(str, None, "The filename of the log file to log to")
 
     k = Result(int, None, "The number of constraints in the solution")
@@ -49,7 +54,10 @@ class LearnExperiment(Experiment):
         raise NotImplementedError()
 
     def run_internal(self):
-        formula = Formula.from_file(self["formula"])
+        random.seed(self["seed"])
+        np.random.seed(self["seed"])
+
+        formula = Formula.from_file(self["formula_filename"])
         data = np.load(self["data_filename"])
         labels = np.load(self["labels_filename"])
 
@@ -63,7 +71,7 @@ class LearnExperiment(Experiment):
         assert initial_type == "random"
 
         def random_selection(indices):
-            return random.sample(indices, initial_count)
+            return random.sample(indices, int(initial_count))
 
         selection_type, selection_count = self["selection"].split(".")
         assert selection_type == "random"
@@ -74,12 +82,12 @@ class LearnExperiment(Experiment):
             labels,
             cnf_factory,
             random_selection,
-            RandomViolationsStrategy(selection_count),
+            RandomViolationsStrategy(int(selection_count)),
             self["initial_k"],
             self["initial_h"],
-            self["weight_k"],
-            self["weight_h"],
-            self["log"]
+            self["cost_k"],
+            self["cost_h"],
+            self["log"],
         )
 
 

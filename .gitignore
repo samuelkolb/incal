@@ -1,3 +1,6 @@
 synthetic/
-res/
+res/*.smt
+res/*.smt2
+res/*.json
+res/*.npy
 remote_res/
