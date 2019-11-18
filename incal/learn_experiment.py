@@ -7,7 +7,6 @@ from typing import Union
 from incal.generator import SyntheticFormula
 from incal import Formula
 from incal.k_cnf_smt_learner import KCnfSmtLearner
-from incal.learn import learn
 from incal.violations.core import RandomViolationsStrategy
 
 

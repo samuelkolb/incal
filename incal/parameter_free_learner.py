@@ -21,7 +21,9 @@ class ParameterFrontier(object):
         return k, h
 
 
-def learn_bottom_up(data, labels, learn_f, w_k, w_h, init_k=1, init_h=0, max_k=None, max_h=None):
+def learn_bottom_up(
+    data, labels, learn_f, w_k, w_h, init_k=1, init_h=0, max_k=None, max_h=None
+):
     """
     Learns a CNF(k, h) SMT formula phi using the learner encapsulated in init_learner such that
     C(k, h) = w_k * k + w_h * h is minimal.
@@ -36,7 +38,7 @@ def learn_bottom_up(data, labels, learn_f, w_k, w_h, init_k=1, init_h=0, max_k=N
     :param max_h:   The maximal value for h
     :return: A tuple containing: 1) the CNF(k, h) formula phi with minimal complexity C(k, h); 2) k; and 3) h
     """
-    solution = None
+    solution = k = h = None
     frontier = ParameterFrontier(w_k, w_h)
     frontier.push(init_k, init_h)
     i = 0

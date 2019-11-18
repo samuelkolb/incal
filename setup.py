@@ -32,6 +32,9 @@ REQUIRED = [
 # What packages are optional?
 EXTRAS = {"sdd": ["pysdd"], "telegram": ["python-telegram-bot"]}
 
+# Distribute: python setup.py upload
+# Requires: pip install twine wheel
+
 here = os.path.abspath(os.path.dirname(__file__))
 
 with open(path.join(here, "README.md")) as ref:
