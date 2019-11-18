@@ -30,7 +30,7 @@ REQUIRED = [
 ]
 
 # What packages are optional?
-EXTRAS = {"sdd": ["pysdd"]}
+EXTRAS = {"sdd": ["pysdd"], "telegram": ["python-telegram-bot"]}
 
 here = os.path.abspath(os.path.dirname(__file__))
 
