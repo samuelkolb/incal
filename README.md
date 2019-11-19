@@ -31,4 +31,4 @@ execute:
 
 To run experiments you can use:
 
-    python -m incal.run_experiments 
+    python -m incal.run_experiments res/synth/small

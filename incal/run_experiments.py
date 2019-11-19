@@ -39,6 +39,12 @@ def main():
         default=None,
         help="The number of concurrent processes to use for running experiments.",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="The number of seconds to run each experiment for.",
+    )
 
     args = parser.parse_args()
 
@@ -82,7 +88,7 @@ def main():
                 trajectory,
                 storage,
                 processes=processes,
-                timeout=200,
+                timeout=args.timeout,
                 observer=dispatcher,
             ).run()
 
