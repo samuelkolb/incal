@@ -4,7 +4,7 @@ import os
 
 clean_dir(os.path.dirname(__file__))
 
-for i in range(10):
+for i in range(20):
     f = generate_formula_file(
         os.path.dirname(__file__),
         "medium",
