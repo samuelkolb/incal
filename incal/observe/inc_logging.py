@@ -34,7 +34,9 @@ class LoggingObserver(IncrementalObserver):
             print("Starting with {} examples".format(len(initial_indices)))
         self.log(flat)
 
-    def observe_iteration(self, data, labels, formula, new_active_indices, solving_time, selection_time):
+    def observe_iteration(
+        self, data, labels, formula, new_active_indices, solving_time, selection_time
+    ):
         flat = {
             "type": "update",
             "theory": smt_to_nested(formula),
@@ -45,7 +47,9 @@ class LoggingObserver(IncrementalObserver):
             "h": self.h,
         }
         if self.violation_counter is not None:
-            flat["violations"] = [int(v) for v in self.violation_counter.last_violations]
+            flat["violations"] = [
+                int(v) for v in self.violation_counter.last_violations
+            ]
 
         if self.verbose:
             print("Found model after {:.2f}s".format(solving_time))
@@ -53,5 +57,9 @@ class LoggingObserver(IncrementalObserver):
             if self.violation_counter is not None:
                 violation_count = len(self.violation_counter.last_violations)
                 selected_count = len(new_active_indices)
-                print("Selected {} of {} violations in {:.2f}s".format(selected_count, violation_count, selection_time))
+                print(
+                    "Selected {} of {} violations in {:.2f}s".format(
+                        selected_count, violation_count, selection_time
+                    )
+                )
         self.log(flat)

@@ -11,14 +11,28 @@ from pywmi import Domain
 
 
 class KCnfSmtLearner(IncrementalLearner):
-    def __init__(self, conjunction_count, half_space_count, selection_strategy, symmetries, allow_negations=True):
+    def __init__(
+        self,
+        conjunction_count,
+        half_space_count,
+        selection_strategy,
+        symmetries,
+        allow_negations=True,
+    ):
         IncrementalLearner.__init__(self, "cnf_smt", selection_strategy)
         self.conjunction_count = conjunction_count
         self.half_space_count = half_space_count
         self.symmetries = symmetries
         self.allow_negations = allow_negations
 
-    def learn_partial(self, solver, domain: Domain, data: np.ndarray, labels: np.ndarray, new_active_indices: Set):
+    def learn_partial(
+        self,
+        solver,
+        domain: Domain,
+        data: np.ndarray,
+        labels: np.ndarray,
+        new_active_indices: Set,
+    ):
 
         # Constants
         n_b_original = len(domain.bool_vars)
@@ -31,23 +45,40 @@ class KCnfSmtLearner(IncrementalLearner):
         n_c = self.conjunction_count
         n_d = data.shape[0]
 
-        real_indices = np.array([domain.var_types[v] == smt.REAL for v in domain.variables])
+        real_indices = np.array(
+            [domain.var_types[v] == smt.REAL for v in domain.variables]
+        )
         real_features = data[:, real_indices]
         bool_features = data[:, np.logical_not(real_indices)]
 
         # Variables
-        a_hr = [[smt.Symbol("a_hr[{}][{}]".format(h, r), REAL) for r in range(n_r)] for h in range(n_h_original)]
+        a_hr = [
+            [smt.Symbol("a_hr[{}][{}]".format(h, r), REAL) for r in range(n_r)]
+            for h in range(n_h_original)
+        ]
         if "1" in self.symmetries:
             b_h = [smt.Real(1.0) for _ in range(n_h_original)]
         else:
             b_h = [smt.Symbol("b_h[{}]".format(h), REAL) for h in range(n_h_original)]
 
-        s_ch = [[smt.Symbol("s_ch[{}][{}]".format(c, h)) for h in range(n_h)] for c in range(n_c)]
-        s_cb = [[smt.Symbol("s_cb[{}][{}]".format(c, b)) for b in range(n_b)] for c in range(n_c)]
+        s_ch = [
+            [smt.Symbol("s_ch[{}][{}]".format(c, h)) for h in range(n_h)]
+            for c in range(n_c)
+        ]
+        s_cb = [
+            [smt.Symbol("s_cb[{}][{}]".format(c, b)) for b in range(n_b)]
+            for c in range(n_c)
+        ]
 
         # Aux variables
-        s_ih = [[smt.Symbol("s_ih[{}][{}]".format(i, h)) for h in range(n_h)] for i in range(n_d)]
-        s_ic = [[smt.Symbol("s_ic[{}][{}]".format(i, c)) for c in range(n_c)] for i in range(n_d)]
+        s_ih = [
+            [smt.Symbol("s_ih[{}][{}]".format(i, h)) for h in range(n_h)]
+            for i in range(n_d)
+        ]
+        s_ic = [
+            [smt.Symbol("s_ic[{}][{}]".format(i, c)) for c in range(n_c)]
+            for i in range(n_d)
+        ]
 
         def pair(real: bool, c: int, index: int) -> Tuple[FNode, FNode]:
             if real:
@@ -64,7 +95,9 @@ class KCnfSmtLearner(IncrementalLearner):
             return x_t | y_f | ((~x_f) & (~y_t))
 
         def pairs(c: int) -> List[Tuple[FNode, FNode]]:
-            return [pair(True, c, i) for i in range(n_h_original)] + [pair(False, c, i) for i in range(n_b_original)]
+            return [pair(True, c, i) for i in range(n_h_original)] + [
+                pair(False, c, i) for i in range(n_b_original)
+            ]
 
         def order_geq_lex(c1: int, c2: int):
             pairs_c1, pairs_c2 = pairs(c1), pairs(c2)
@@ -74,27 +107,44 @@ class KCnfSmtLearner(IncrementalLearner):
                 condition = smt.TRUE()
                 for i in range(j):
                     condition &= order_equal(pairs_c1[i], pairs_c2[i])
-                constraints &= smt.Implies(condition, order_geq(pairs_c1[j], pairs_c2[j]))
+                constraints &= smt.Implies(
+                    condition, order_geq(pairs_c1[j], pairs_c2[j])
+                )
             return constraints
 
         # Constraints
         for i in new_active_indices:
-            x_r, x_b, label = [float(val) for val in real_features[i]], bool_features[i], labels[i]
+            x_r, x_b, label = (
+                [float(val) for val in real_features[i]],
+                bool_features[i],
+                labels[i],
+            )
 
             for h in range(n_h_original):
-                sum_coefficients = smt.Plus([a_hr[h][r] * smt.Real(x_r[r]) for r in range(n_r)])
+                sum_coefficients = smt.Plus(
+                    [a_hr[h][r] * smt.Real(x_r[r]) for r in range(n_r)]
+                )
                 solver.add_assertion(smt.Iff(s_ih[i][h], sum_coefficients <= b_h[h]))
 
             for h in range(n_h_original, n_h):
                 solver.add_assertion(smt.Iff(s_ih[i][h], ~s_ih[i][h - n_h_original]))
 
             for c in range(n_c):
-                solver.add_assertion(smt.Iff(s_ic[i][c], smt.Or(
-                    [smt.FALSE()]
-                    + [(s_ch[c][h] & s_ih[i][h]) for h in range(n_h)]
-                    + [s_cb[c][b] for b in range(n_b_original) if x_b[b]]
-                    + [s_cb[c][b] for b in range(n_b_original, n_b) if not x_b[b - n_b_original]]
-                )))
+                solver.add_assertion(
+                    smt.Iff(
+                        s_ic[i][c],
+                        smt.Or(
+                            [smt.FALSE()]
+                            + [(s_ch[c][h] & s_ih[i][h]) for h in range(n_h)]
+                            + [s_cb[c][b] for b in range(n_b_original) if x_b[b]]
+                            + [
+                                s_cb[c][b]
+                                for b in range(n_b_original, n_b)
+                                if not x_b[b - n_b_original]
+                            ]
+                        ),
+                    )
+                )
 
             # --- [start] symmetry breaking ---
             # Mutually exclusive
@@ -108,7 +158,10 @@ class KCnfSmtLearner(IncrementalLearner):
             # Normalized
             if "n" in self.symmetries:
                 for h in range(n_h_original):
-                    solver.add_assertion(smt.Equals(b_h[h], smt.Real(1.0)) | smt.Equals(b_h[h], smt.Real(0.0)))
+                    solver.add_assertion(
+                        smt.Equals(b_h[h], smt.Real(1.0))
+                        | smt.Equals(b_h[h], smt.Real(0.0))
+                    )
 
             # Vertical symmetries
             if "v" in self.symmetries:
@@ -131,10 +184,12 @@ class KCnfSmtLearner(IncrementalLearner):
 
         x_vars = [domain.get_symbol(domain.real_vars[r]) for r in range(n_r)]
         half_spaces = [
-            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) <= model.get_value(b_h[h])
+            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)])
+            <= model.get_value(b_h[h])
             for h in range(n_h_original)
         ] + [
-            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) > model.get_value(b_h[h])
+            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)])
+            > model.get_value(b_h[h])
             for h in range(n_h - n_h_original)
         ]
 

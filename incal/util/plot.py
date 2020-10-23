@@ -4,7 +4,7 @@ import platform
 import matplotlib as mpl
 
 if platform.system() == "Darwin":
-    mpl.use('TkAgg')
+    mpl.use("TkAgg")
 
 import matplotlib.markers as mark
 import matplotlib.pyplot as plt
@@ -40,18 +40,28 @@ class ScatterData:
 
     def gen_colors(self):
         if len(self.data) <= len(self.colors):
-            return self.colors[:len(self.data)]
+            return self.colors[: len(self.data)]
         iterator = iter(cm.rainbow(numpy.linspace(0, 1, len(self.data))))
         return [next(iterator) for _ in range(len(self.data))]
 
     def gen_markers(self):
         if len(self.data) <= len(self.markers):
-            return self.markers[:len(self.data)]
+            return self.markers[: len(self.data)]
         iterator = itertools.cycle(mark.MarkerStyle.filled_markers)
         return [next(iterator) for _ in range(len(self.data))]
 
-    def render(self, ax, lines=True, log_x=True, log_y=True, label_x=None, label_y=None, legend_pos=None,
-               x_ticks=None, y_ticks=None):
+    def render(
+        self,
+        ax,
+        lines=True,
+        log_x=True,
+        log_y=True,
+        label_x=None,
+        label_y=None,
+        legend_pos=None,
+        x_ticks=None,
+        y_ticks=None,
+    ):
 
         plots = []
         colors = self.gen_colors()
@@ -78,7 +88,7 @@ class ScatterData:
                 if cache == "format":
                     plot_format = plot_option
                 elif cache == "error":
-                    show_error = (int(plot_option) == 1)
+                    show_error = int(plot_option) == 1
                 elif cache == "legend_pos":
                     legend_pos = plot_option
                 elif cache == "lx":
@@ -101,7 +111,12 @@ class ScatterData:
                     self.y_lim(limits)
                 cache = None
 
-        min_x, max_x, min_y, max_y = numpy.infty, -numpy.infty, numpy.infty, -numpy.infty
+        min_x, max_x, min_y, max_y = (
+            numpy.infty,
+            -numpy.infty,
+            numpy.infty,
+            -numpy.infty,
+        )
         for i in range(self.size):
             name, x_data, y_data, error = self.data[i]
             try:
@@ -113,20 +128,30 @@ class ScatterData:
                 pass
 
             if plot_format == "scatter":
-                plots.append(ax.scatter(x_data, y_data, color=colors[i], marker=markers[i], s=40))
+                plots.append(
+                    ax.scatter(x_data, y_data, color=colors[i], marker=markers[i], s=40)
+                )
                 if lines:
                     ax.plot(x_data, y_data, color=colors[i])
                 if show_error and error is not None:
-                    ax.fill_between(x_data, y_data - error, y_data + error, color=colors[i], alpha=0.35,
-                                    linewidth=0)
-                        # ax.errorbar(x_data, y_data, error, linestyle='None', color=colors[i])
+                    ax.fill_between(
+                        x_data,
+                        y_data - error,
+                        y_data + error,
+                        color=colors[i],
+                        alpha=0.35,
+                        linewidth=0,
+                    )
+                    # ax.errorbar(x_data, y_data, error, linestyle='None', color=colors[i])
             elif plot_format == "bar":
                 plots.append(ax.bar(x_data, y_data, color=colors[i]))
             else:
                 raise ValueError("Unknown plot format")
 
         if plot_diagonal:
-            ax.plot(numpy.array([min_x, max_x]), numpy.array([min_y, max_y]), linestyle="--")
+            ax.plot(
+                numpy.array([min_x, max_x]), numpy.array([min_y, max_y]), linestyle="--"
+            )
         if plot_extra and plot_extra == "1/x":
             ax.plot(x_data, 1 / x_data, linestyle="--")
 
@@ -139,9 +164,9 @@ class ScatterData:
             ax.legend(plots, legend_names, loc=legend_pos)
 
         if log_x:
-            ax.set_xscale('log')
+            ax.set_xscale("log")
         if log_y:
-            ax.set_yscale('log')
+            ax.set_yscale("log")
 
         x_lim, y_lim = self.limits
         if x_lim is not None:
@@ -172,7 +197,9 @@ class ScatterData:
         if filename is None:
             plt.show(block=True)
         else:
-            plt.savefig(filename, format="png", bbox_inches="tight", pad_inches=0.08, dpi=600)
+            plt.savefig(
+                filename, format="png", bbox_inches="tight", pad_inches=0.08, dpi=600
+            )
 
 
 def plot(file, *args, **kwargs):
@@ -184,6 +211,7 @@ def plot(file, *args, **kwargs):
     rows = int(numpy.ceil(subplots / cols))
 
     import matplotlib.gridspec as grid_spec
+
     gs = grid_spec.GridSpec(rows, cols)
 
     axes = [plt.subplot(gs[0, 0]), plt.subplot(gs[0, 1]), plt.subplot(gs[1, :])]

@@ -1,5 +1,18 @@
 from pywmi import Domain
-from pysmt.shortcuts import REAL, Or, And, LE, Real, Symbol, BOOL, GT, Not, Plus, Times, GE
+from pysmt.shortcuts import (
+    REAL,
+    Or,
+    And,
+    LE,
+    Real,
+    Symbol,
+    BOOL,
+    GT,
+    Not,
+    Plus,
+    Times,
+    GE,
+)
 
 
 def xy_domain():
@@ -12,7 +25,7 @@ def xy_domain():
 def simple_checker_problem():
     theory = Or(
         And(LE(Symbol("x", REAL), Real(0.5)), LE(Symbol("y", REAL), Real(0.5))),
-        And(GT(Symbol("x", REAL), Real(0.5)), GT(Symbol("y", REAL), Real(0.5)))
+        And(GT(Symbol("x", REAL), Real(0.5)), GT(Symbol("y", REAL), Real(0.5))),
     )
 
     return xy_domain(), theory, "simple_checker"
@@ -30,10 +43,26 @@ def checker_problem():
     var_domains = {"x": (0, 1), "y": (0, 1)}
 
     theory = Or(
-        And(LE(Symbol("x", REAL), Real(0.5)), LE(Symbol("y", REAL), Real(0.5)), Symbol("a", BOOL)),
-        And(GT(Symbol("x", REAL), Real(0.5)), GT(Symbol("y", REAL), Real(0.5)), Symbol("a", BOOL)),
-        And(GT(Symbol("x", REAL), Real(0.5)), LE(Symbol("y", REAL), Real(0.5)), Not(Symbol("a", BOOL))),
-        And(LE(Symbol("x", REAL), Real(0.5)), GT(Symbol("y", REAL), Real(0.5)), Not(Symbol("a", BOOL)))
+        And(
+            LE(Symbol("x", REAL), Real(0.5)),
+            LE(Symbol("y", REAL), Real(0.5)),
+            Symbol("a", BOOL),
+        ),
+        And(
+            GT(Symbol("x", REAL), Real(0.5)),
+            GT(Symbol("y", REAL), Real(0.5)),
+            Symbol("a", BOOL),
+        ),
+        And(
+            GT(Symbol("x", REAL), Real(0.5)),
+            LE(Symbol("y", REAL), Real(0.5)),
+            Not(Symbol("a", BOOL)),
+        ),
+        And(
+            LE(Symbol("x", REAL), Real(0.5)),
+            GT(Symbol("y", REAL), Real(0.5)),
+            Not(Symbol("a", BOOL)),
+        ),
     )
 
     return Domain(variables, var_types, var_domains), theory, "checker"
@@ -66,7 +95,11 @@ def shared_hyperplane_problem():
     h3 = LE(y, Plus(x, Real(-0.25)))
     # y >= x - 0.5
     h4 = GE(y, Plus(x, Real(-0.5)))
-    return domain, Or(And(shared1, shared2, h1, h2), And(shared1, shared2, h3, h4)), "shared"
+    return (
+        domain,
+        Or(And(shared1, shared2, h1, h2), And(shared1, shared2, h3, h4)),
+        "shared",
+    )
 
 
 def cross_problem():
@@ -81,7 +114,9 @@ def cross_problem():
     middle_left = x >= 0.4
     middle_right = x <= 0.6
     right = x <= 0.8
-    theory = (top & middle_left & middle_right & bottom) | (left & middle_top & middle_bottom & right)
+    theory = (top & middle_left & middle_right & bottom) | (
+        left & middle_top & middle_bottom & right
+    )
     return domain, theory, "cross"
 
 
@@ -105,11 +140,13 @@ def ice_cream_problem():
     domain = Domain(variables, var_types, var_domains)
 
     chocolate, banana, weekend = (domain.get_symbol(v) for v in variables)
-    theory = (chocolate < 0.650) \
-             & (banana < 0.550) \
-             & (chocolate + 0.7 * banana <= 0.700) \
-             & (chocolate + 1.2 * banana <= 0.750) \
-             & (~weekend | (chocolate + 0.7 * banana <= 0.340))
+    theory = (
+        (chocolate < 0.650)
+        & (banana < 0.550)
+        & (chocolate + 0.7 * banana <= 0.700)
+        & (chocolate + 1.2 * banana <= 0.750)
+        & (~weekend | (chocolate + 0.7 * banana <= 0.340))
+    )
 
     return domain, theory, "ice_cream"
 

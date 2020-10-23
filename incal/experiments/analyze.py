@@ -25,11 +25,11 @@ class Properties(object):
 
     @staticmethod
     def to_name(filename):
-        return filename[filename.find("QF_LRA"):filename.find("smt2")+4]
+        return filename[filename.find("QF_LRA") : filename.find("smt2") + 4]
 
     @staticmethod
     def to_sample_name(filename):
-        return filename[filename.find("QF_LRA"):]
+        return filename[filename.find("QF_LRA") :]
 
     @staticmethod
     def to_synthetic_name(filename):
@@ -38,14 +38,19 @@ class Properties(object):
 
     @staticmethod
     def compute(experiments):
-        Properties.db = pickledb.load('example.db', True)
+        Properties.db = pickledb.load("example.db", True)
         if Properties.db.exists("bounds"):
             Properties.bounds = Properties.db.get("bounds")
         else:
-            used_names = {Properties.to_sample_name(e.parameters.original_values["data"]) for e in experiments}
+            used_names = {
+                Properties.to_sample_name(e.parameters.original_values["data"])
+                for e in experiments
+            }
             names_to_bounds = dict()
             summary_file = "remote_res/smt_lib_benchmark/qf_lra_summary.pickle"
-            for name, entry, density_filename in select_benchmark_files(benchmark_filter, summary_file):
+            for name, entry, density_filename in select_benchmark_files(
+                benchmark_filter, summary_file
+            ):
                 if "samples" in entry:
                     for s in entry["samples"]:
                         name = Properties.to_sample_name(s["samples_filename"])
@@ -56,11 +61,15 @@ class Properties(object):
 
     @staticmethod
     def get_bound(experiment):
-        return Properties.bounds[Properties.to_sample_name(experiment.parameters.original_values["data"])]
+        return Properties.bounds[
+            Properties.to_sample_name(experiment.parameters.original_values["data"])
+        ]
 
     @staticmethod
     def get_db_synthetic(experiment):
-        return get_synthetic_db(os.path.dirname(experiment.parameters.original_values["domain"]))
+        return get_synthetic_db(
+            os.path.dirname(experiment.parameters.original_values["domain"])
+        )
 
     @staticmethod
     def original_k(experiment):
@@ -104,12 +113,20 @@ class Properties(object):
                 domain = import_domain(json.loads(entry["domain"]))
                 true_formula = nested_to_smt(entry["formula"])
             else:
-                density = Density.import_from(experiment.parameters.original_values["domain"])
-                domain = Domain(density.domain.variables, density.domain.var_types, Properties.get_bound(experiment))
+                density = Density.import_from(
+                    experiment.parameters.original_values["domain"]
+                )
+                domain = Domain(
+                    density.domain.variables,
+                    density.domain.var_types,
+                    Properties.get_bound(experiment),
+                )
                 true_formula = density.support
             learned_formula = nested_to_smt(experiment.results.formula)
             engine = RejectionEngine(domain, smt.TRUE(), smt.Real(1.0), 100000)
-            accuracy = engine.compute_probability(smt.Iff(true_formula, learned_formula))
+            accuracy = engine.compute_probability(
+                smt.Iff(true_formula, learned_formula)
+            )
             pysmt.environment.pop_env()
             print(accuracy)
             Properties.db.set(key, accuracy)
@@ -129,7 +146,9 @@ def register_derived(experiment):
 def analyze(results_directories, res_path, show_args):
     experiments = []  # type: List[Experiment]
     for results_directory in results_directories:
-        for filename in glob.glob("{}/**/*.result".format(results_directory), recursive=True):
+        for filename in glob.glob(
+            "{}/**/*.result".format(results_directory), recursive=True
+        ):
             log_file = filename.replace(".result", ".log")
             if not os.path.exists(log_file):
                 log_file = None

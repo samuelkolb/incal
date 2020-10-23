@@ -8,8 +8,16 @@ from fabric.api import run, env, execute, cd, local, put, get, prefix, lcd
 from fabric.contrib import files
 
 
-def vary_synthetic_parameter(parameter_name, values, fixed_values, learner_settings, time_out=None, samples=None,
-                             exp_name=None, override=False):
+def vary_synthetic_parameter(
+    parameter_name,
+    values,
+    fixed_values,
+    learner_settings,
+    time_out=None,
+    samples=None,
+    exp_name=None,
+    override=False,
+):
     default_values = {
         "data_sets": 10,
         "bool_count": 2,
@@ -29,7 +37,12 @@ def vary_synthetic_parameter(parameter_name, values, fixed_values, learner_setti
 
     del default_values[parameter_name]
 
-    config = {"fixed": default_values, "vary": parameter_name, "values": values, "learner": learner_settings}
+    config = {
+        "fixed": default_values,
+        "vary": parameter_name,
+        "values": values,
+        "learner": learner_settings,
+    }
     if exp_name is None:
         exp_name = "h" + str(hash(json.dumps(config)) + sys.maxsize + 1)
 
@@ -54,9 +67,12 @@ def vary_synthetic_parameter(parameter_name, values, fixed_values, learner_setti
         commands = []
         for value in values:
             default_values[parameter_name] = value
-            options = " ".join("--{} {}".format(name, val) for name, val in default_values.items())
-            command = "python {api} generate {input}/{val} {options}" \
-                .format(api=full_api, input=full_gen, val=value, options=options)
+            options = " ".join(
+                "--{} {}".format(name, val) for name, val in default_values.items()
+            )
+            command = "python {api} generate {input}/{val} {options}".format(
+                api=full_api, input=full_gen, val=value, options=options
+            )
             commands.append(command)
         commands.append("wait")
 
@@ -72,9 +88,16 @@ def vary_synthetic_parameter(parameter_name, values, fixed_values, learner_setti
 
         commands = []
         for value in values:
-            options = " ".join("--{} {}".format(name, val) for name, val in learner_settings.items())
-            command = "python {exp} {input}/{val} \"\" {output}/{val} {options}" \
-                .format(exp=full_exp, input=full_gen, output=full_out, val=value, options=options)
+            options = " ".join(
+                "--{} {}".format(name, val) for name, val in learner_settings.items()
+            )
+            command = 'python {exp} {input}/{val} "" {output}/{val} {options}'.format(
+                exp=full_exp,
+                input=full_gen,
+                output=full_out,
+                val=value,
+                options=options,
+            )
             if time_out is not None:
                 command += " -t {}".format(time_out)
             commands.append(command)
@@ -89,13 +112,20 @@ def vary_synthetic_parameter(parameter_name, values, fixed_values, learner_setti
             for value in values:
                 local("cp {}/* all/".format(value))
 
-        local("python {api} combine {output}/summary {values} -p {output}/"
-            .format(api=full_api, output=full_out, values=" ".join(str(v) for v in values)))
+        local(
+            "python {api} combine {output}/summary {values} -p {output}/".format(
+                api=full_api, output=full_out, values=" ".join(str(v) for v in values)
+            )
+        )
 
         for migration in ["ratio", "accuracy"]:
-            command = "python {api} migrate {migration} {output}/summary -d {input}/all" \
-                .format(output=full_out, input=full_gen, values=" ".join(str(v) for v in values), api=full_api,
-                        migration=migration)
+            command = "python {api} migrate {migration} {output}/summary -d {input}/all".format(
+                output=full_out,
+                input=full_gen,
+                values=" ".join(str(v) for v in values),
+                api=full_api,
+                migration=migration,
+            )
             if samples is not None:
                 command += " -s {}".format(samples)
             local(command)
@@ -104,36 +134,87 @@ def vary_synthetic_parameter(parameter_name, values, fixed_values, learner_setti
 def vary_h(time_out=None, samples=None, override=False):
     parameter = "half_spaces"
     values = [3, 4, 5, 6, 7, 8, 9, 10]
-    fixed_values = {"data_sets": 100, "bool_count": 0, "real_count": 2, "k": 2, "literals": 3}
+    fixed_values = {
+        "data_sets": 100,
+        "bool_count": 0,
+        "real_count": 2,
+        "k": 2,
+        "literals": 3,
+    }
 
     learner = {"bias": "cnf", "selection": "random"}
-    vary_synthetic_parameter(parameter, values, fixed_values, learner, time_out, samples, "standard", override)
+    vary_synthetic_parameter(
+        parameter,
+        values,
+        fixed_values,
+        learner,
+        time_out,
+        samples,
+        "standard",
+        override,
+    )
 
     learner["selection"] = "dt_weighted"
-    vary_synthetic_parameter(parameter, values, fixed_values, learner, time_out, samples, "dt", override)
+    vary_synthetic_parameter(
+        parameter, values, fixed_values, learner, time_out, samples, "dt", override
+    )
 
 
 def vary_h_simple(time_out=None, samples=None):
     parameter_name = "half_spaces"
     values = [3, 4, 5, 6, 7, 8]
-    fixed_values = {"data_sets": 10, "bool_count": 0, "real_count": 2, "k": 2, "literals": 3}
+    fixed_values = {
+        "data_sets": 10,
+        "bool_count": 0,
+        "real_count": 2,
+        "k": 2,
+        "literals": 3,
+    }
 
     learner = {"bias": "cnf", "selection": "random"}
-    vary_synthetic_parameter(parameter_name, values, fixed_values, learner, time_out, samples, "small_standard")
+    vary_synthetic_parameter(
+        parameter_name,
+        values,
+        fixed_values,
+        learner,
+        time_out,
+        samples,
+        "small_standard",
+    )
 
     learner["selection_size"] = 1
-    vary_synthetic_parameter(parameter_name, values, fixed_values, learner, time_out, samples, "small_standard_single")
+    vary_synthetic_parameter(
+        parameter_name,
+        values,
+        fixed_values,
+        learner,
+        time_out,
+        samples,
+        "small_standard_single",
+    )
 
     learner["selection_size"] = 20
-    vary_synthetic_parameter(parameter_name, values, fixed_values, learner, time_out, samples, "small_standard_20")
+    vary_synthetic_parameter(
+        parameter_name,
+        values,
+        fixed_values,
+        learner,
+        time_out,
+        samples,
+        "small_standard_20",
+    )
 
     learner["selection"] = "dt_weighted"
     learner["selection_size"] = 1
-    vary_synthetic_parameter(parameter_name, values, fixed_values, learner, time_out, samples, "small_dt_1")
+    vary_synthetic_parameter(
+        parameter_name, values, fixed_values, learner, time_out, samples, "small_dt_1"
+    )
 
     learner["selection"] = "dt"
     learner["selection_size"] = 1
-    vary_synthetic_parameter(parameter_name, values, fixed_values, learner, time_out, samples, "small_sdt_1")
+    vary_synthetic_parameter(
+        parameter_name, values, fixed_values, learner, time_out, samples, "small_sdt_1"
+    )
 
 
 if __name__ == "__main__":

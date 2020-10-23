@@ -7,7 +7,13 @@ from incremental_learner import IncrementalLearner
 
 
 class KDnfSmtLearner(IncrementalLearner):
-    def __init__(self, conjunction_count, half_space_count, selection_strategy, allow_negations=True):
+    def __init__(
+        self,
+        conjunction_count,
+        half_space_count,
+        selection_strategy,
+        allow_negations=True,
+    ):
         IncrementalLearner.__init__(self, "dnf_smt", selection_strategy)
         self.conjunction_count = conjunction_count
         self.half_space_count = half_space_count
@@ -30,33 +36,59 @@ class KDnfSmtLearner(IncrementalLearner):
         labels = [row[1] for row in data]
 
         # Variables
-        a_hr = [[smt.Symbol("a_hr[{}][{}]".format(h, r), REAL) for r in range(n_r)] for h in range(n_h_original)]
+        a_hr = [
+            [smt.Symbol("a_hr[{}][{}]".format(h, r), REAL) for r in range(n_r)]
+            for h in range(n_h_original)
+        ]
         b_h = [smt.Symbol("b_h[{}]".format(h), REAL) for h in range(n_h_original)]
-        s_ch = [[smt.Symbol("s_ch[{}][{}]".format(c, h)) for h in range(n_h)] for c in range(n_c)]
-        s_cb = [[smt.Symbol("s_cb[{}][{}]".format(c, b)) for b in range(n_b)] for c in range(n_c)]
+        s_ch = [
+            [smt.Symbol("s_ch[{}][{}]".format(c, h)) for h in range(n_h)]
+            for c in range(n_c)
+        ]
+        s_cb = [
+            [smt.Symbol("s_cb[{}][{}]".format(c, b)) for b in range(n_b)]
+            for c in range(n_c)
+        ]
 
         # Aux variables
-        s_ih = [[smt.Symbol("s_ih[{}][{}]".format(i, h)) for h in range(n_h)] for i in range(n_d)]
-        s_ic = [[smt.Symbol("s_ic[{}][{}]".format(i, c)) for c in range(n_c)] for i in range(n_d)]
+        s_ih = [
+            [smt.Symbol("s_ih[{}][{}]".format(i, h)) for h in range(n_h)]
+            for i in range(n_d)
+        ]
+        s_ic = [
+            [smt.Symbol("s_ic[{}][{}]".format(i, c)) for c in range(n_c)]
+            for i in range(n_d)
+        ]
 
         # Constraints
         for i in new_active_indices:
             x_r, x_b, label = real_features[i], bool_features[i], labels[i]
 
             for h in range(n_h_original):
-                sum_coefficients = smt.Plus([a_hr[h][r] * smt.Real(x_r[r]) for r in range(n_r)])
+                sum_coefficients = smt.Plus(
+                    [a_hr[h][r] * smt.Real(x_r[r]) for r in range(n_r)]
+                )
                 solver.add_assertion(smt.Iff(s_ih[i][h], sum_coefficients <= b_h[h]))
 
             for h in range(n_h_original, n_h):
                 solver.add_assertion(smt.Iff(s_ih[i][h], ~s_ih[i][h - n_h_original]))
 
             for c in range(n_c):
-                solver.add_assertion(smt.Iff(s_ic[i][c], smt.And(
-                    [smt.TRUE()]
-                    + [(~s_ch[c][h] | s_ih[i][h]) for h in range(n_h)]
-                    + [~s_cb[c][b] for b in range(n_b_original) if not x_b[b]]
-                    + [~s_cb[c][b] for b in range(n_b_original, n_b) if x_b[b - n_b_original]]
-                )))
+                solver.add_assertion(
+                    smt.Iff(
+                        s_ic[i][c],
+                        smt.And(
+                            [smt.TRUE()]
+                            + [(~s_ch[c][h] | s_ih[i][h]) for h in range(n_h)]
+                            + [~s_cb[c][b] for b in range(n_b_original) if not x_b[b]]
+                            + [
+                                ~s_cb[c][b]
+                                for b in range(n_b_original, n_b)
+                                if x_b[b - n_b_original]
+                            ]
+                        ),
+                    )
+                )
 
             if label:
                 solver.add_assertion(smt.Or([s_ic[i][c] for c in range(n_c)]))
@@ -68,10 +100,12 @@ class KDnfSmtLearner(IncrementalLearner):
 
         x_vars = [domain.get_symbol(domain.real_vars[r]) for r in range(n_r)]
         half_spaces = [
-            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) <= model.get_value(b_h[h])
+            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)])
+            <= model.get_value(b_h[h])
             for h in range(n_h_original)
         ] + [
-            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)]) > model.get_value(b_h[h])
+            smt.Plus([model.get_value(a_hr[h][r]) * x_vars[r] for r in range(n_r)])
+            > model.get_value(b_h[h])
             for h in range(n_h - n_h_original)
         ]
 

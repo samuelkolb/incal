@@ -22,14 +22,24 @@ class GreedyRuleLearner(Learner):
         dnf_list = []
         iterations = 0
         while len(pos_uncovered_indices) > 0:
-            print("{} uncovered positive examples remain".format(len(pos_uncovered_indices)))
-            rule_list = self.learn_rule(domain, data, pos_uncovered_indices, neg_indices)
+            print(
+                "{} uncovered positive examples remain".format(
+                    len(pos_uncovered_indices)
+                )
+            )
+            rule_list = self.learn_rule(
+                domain, data, pos_uncovered_indices, neg_indices
+            )
             new_pos_uncovered_indices = []
             for i in pos_uncovered_indices:
                 if not Learner.check_example(domain, data[i][0], [rule_list]):
                     new_pos_uncovered_indices.append(i)
             dnf_list.append(rule_list)
-            print("Covered {} new positive examples".format(len(pos_uncovered_indices) - len(new_pos_uncovered_indices)))
+            print(
+                "Covered {} new positive examples".format(
+                    len(pos_uncovered_indices) - len(new_pos_uncovered_indices)
+                )
+            )
             pos_uncovered_indices = new_pos_uncovered_indices
             print(rule_list)
             print(pos_uncovered_indices)
@@ -40,7 +50,11 @@ class GreedyRuleLearner(Learner):
 
         for i in neg_indices:
             if Learner.check_example(domain, data[i][0], dnf_list):
-                print("Negative example {}: {} was wrongfully covered".format(i, data[i][0]))
+                print(
+                    "Negative example {}: {} was wrongfully covered".format(
+                        i, data[i][0]
+                    )
+                )
         return dnf_list
 
     def learn_rule(self, domain, data, pos_uncovered_indices, neg_indices):
@@ -49,7 +63,9 @@ class GreedyRuleLearner(Learner):
 
 class GreedyMilpRuleLearner(GreedyRuleLearner):
     def __init__(self, max_hyperplanes_per_rule, max_terms_per_rule):
-        GreedyRuleLearner.__init__(self, "milp", max_hyperplanes_per_rule, max_terms_per_rule)
+        GreedyRuleLearner.__init__(
+            self, "milp", max_hyperplanes_per_rule, max_terms_per_rule
+        )
 
     def learn_rule(self, domain, data, pos_uncovered_indices, neg_indices):
         # Create a new model
@@ -57,7 +73,15 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
 
         print("Data")
         for row, l in data:
-            print(*(["{}: {:.2f}".format(v, Learner._convert(row[v])) for v in domain.variables] + [l]))
+            print(
+                *(
+                    [
+                        "{}: {:.2f}".format(v, Learner._convert(row[v]))
+                        for v in domain.variables
+                    ]
+                    + [l]
+                )
+            )
         print()
 
         # --- Computed constants
@@ -74,40 +98,79 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
         # --- Variables
 
         # Inequality h is selected for the rule
-        s_h = [m.addVar(vtype=milp.GRB.BINARY, name="s_h({h})".format(h=h)) for h in range(n_h)]
+        s_h = [
+            m.addVar(vtype=milp.GRB.BINARY, name="s_h({h})".format(h=h))
+            for h in range(n_h)
+        ]
 
         # Example e covered by inequality h
         c_eh = [
-            [m.addVar(vtype=milp.GRB.BINARY, name="c_eh({e}, {h})".format(e=e, h=h)) for h in range(n_h)]
+            [
+                m.addVar(vtype=milp.GRB.BINARY, name="c_eh({e}, {h})".format(e=e, h=h))
+                for h in range(n_h)
+            ]
             for e in range(n_e)
         ]
 
         # Example e covered by rule
-        c_e = [m.addVar(vtype=milp.GRB.BINARY, name="c_e({e})".format(e=e)) for e in range(n_e)]
+        c_e = [
+            m.addVar(vtype=milp.GRB.BINARY, name="c_e({e})".format(e=e))
+            for e in range(n_e)
+        ]
 
         # Boolean feature (or negation) selected
-        s_b = [m.addVar(vtype=milp.GRB.BINARY, name="s_b({b})".format(b=b)) for b in range(2 * n_b)]
+        s_b = [
+            m.addVar(vtype=milp.GRB.BINARY, name="s_b({b})".format(b=b))
+            for b in range(2 * n_b)
+        ]
 
         # Coefficient of the r-th variable of inequality h
         a_hr = [
-            [m.addVar(vtype=milp.GRB.CONTINUOUS, lb=-1, ub=1, name="a_hr({h}, {r})".format(h=h, r=r))
-             for r in range(n_r)]
+            [
+                m.addVar(
+                    vtype=milp.GRB.CONTINUOUS,
+                    lb=-1,
+                    ub=1,
+                    name="a_hr({h}, {r})".format(h=h, r=r),
+                )
+                for r in range(n_r)
+            ]
             for h in range(n_h)
         ]
 
         # Offset of inequality h
-        b_h = [m.addVar(vtype=milp.GRB.CONTINUOUS, lb=-1, ub=1, name="b_h({h})".format(h=h)) for h in range(n_h)]
-        b_abs_h = [m.addVar(vtype=milp.GRB.CONTINUOUS, lb=-1, ub=1, name="b_abs_h({h})".format(h=h)) for h in range(n_h)]
+        b_h = [
+            m.addVar(
+                vtype=milp.GRB.CONTINUOUS, lb=-1, ub=1, name="b_h({h})".format(h=h)
+            )
+            for h in range(n_h)
+        ]
+        b_abs_h = [
+            m.addVar(
+                vtype=milp.GRB.CONTINUOUS, lb=-1, ub=1, name="b_abs_h({h})".format(h=h)
+            )
+            for h in range(n_h)
+        ]
 
         # Auxiliary variable (c_eh AND s_h)
         and_eh = [
-            [m.addVar(vtype=milp.GRB.BINARY, name="and_eh({e}, {h})".format(e=e, h=h)) for h in range(n_h)]
+            [
+                m.addVar(
+                    vtype=milp.GRB.BINARY, name="and_eh({e}, {h})".format(e=e, h=h)
+                )
+                for h in range(n_h)
+            ]
             for e in range(n_e)
         ]
 
         # Auxiliary variable (x_eb AND s_b)
         and_eb = [
-            [m.addVar(vtype=milp.GRB.BINARY, name="and_eb({e}, {b})".format(e=e, b=b)) for b in range(n_b)]
+            [
+                m.addVar(
+                    vtype=milp.GRB.BINARY, name="and_eb({e}, {b})".format(e=e, b=b)
+                )
+                for b in range(n_b)
+            ]
             for e in range(n_e)
         ]
 
@@ -138,7 +201,9 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
         for e in range(n_e):
             if not data[e][1]:
                 for h in range(n_h):
-                    name = "and_eh({e}, {h}) >= c_eh({e}, {h}) + s_h({h}) - 1".format(e=e, h=h)
+                    name = "and_eh({e}, {h}) >= c_eh({e}, {h}) + s_h({h}) - 1".format(
+                        e=e, h=h
+                    )
                     m.addConstr(and_eh[e][h] >= c_eh[e][h] + s_h[h] - 1, name)
                     print(name)
         print()
@@ -148,7 +213,10 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
             if not data[e][1]:
                 for b in range(2 * n_b):
                     name = "and_eb({e}, {b}) <= x_eb({e}, {b})".format(e=e, b=b)
-                    m.addConstr(and_eb[e][b] <= (x_eb[e][b] if b < n_b else 1 - x_eb[e][b]), name)
+                    m.addConstr(
+                        and_eb[e][b] <= (x_eb[e][b] if b < n_b else 1 - x_eb[e][b]),
+                        name,
+                    )
                     print(name)
         print()
 
@@ -165,25 +233,38 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
         for e in range(n_e):
             if not data[e][1]:
                 for b in range(2 * n_b):
-                    name = "and_eb({e}, {b}) >= x_eb({e}, {b}) + s_b({b}) - 1".format(e=e, b=b)
-                    m.addConstr(and_eb[e][b] >= (x_eb[e][b] if b < n_b else 1 - x_eb[e][b]) + s_b[b] - 1, name)
+                    name = "and_eb({e}, {b}) >= x_eb({e}, {b}) + s_b({b}) - 1".format(
+                        e=e, b=b
+                    )
+                    m.addConstr(
+                        and_eb[e][b]
+                        >= (x_eb[e][b] if b < n_b else 1 - x_eb[e][b]) + s_b[b] - 1,
+                        name,
+                    )
                     print(name)
         print()
 
         # Add constraint: SUM_(h = 1..n_h) and_eh - s_h + SUM_(b = 1..2 * n_b) and_eb - s_b <= -1
         for e in range(n_e):
             if not data[e][1]:
-                name = "SUM_(h = 1..n_h) and_eh({e}, h) - s_h(h) + SUM_(b = 1..2*n_b) and_eb({e}, b) - s_b(b) <= -1"\
-                    .format(e=e)
-                m.addConstr(sum(and_eh[e][h] - s_h[h] for h in range(n_h))
-                            + sum(and_eb[e][b] - s_b[b] for b in range(2 * n_b)) <= -1, name)
+                name = "SUM_(h = 1..n_h) and_eh({e}, h) - s_h(h) + SUM_(b = 1..2*n_b) and_eb({e}, b) - s_b(b) <= -1".format(
+                    e=e
+                )
+                m.addConstr(
+                    sum(and_eh[e][h] - s_h[h] for h in range(n_h))
+                    + sum(and_eb[e][b] - s_b[b] for b in range(2 * n_b))
+                    <= -1,
+                    name,
+                )
                 print(name)
 
         # Add constraint: c_e <= c_eh + (1 - s_h)
         for e in range(n_e):
             if data[e][1]:
                 for h in range(n_h):
-                    name = "c_e({e}) <= c_eh({e}, {h}) + (1 - s_h({h}))".format(e=e, h=h)
+                    name = "c_e({e}) <= c_eh({e}, {h}) + (1 - s_h({h}))".format(
+                        e=e, h=h
+                    )
                     m.addConstr(c_e[e] <= c_eh[e][h] + (1 - s_h[h]), name)
                     print(name)
 
@@ -191,29 +272,44 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
         for e in range(n_e):
             if data[e][1]:
                 for b in range(2 * n_b):
-                    name = "c_e({e}) <= x_eb({e}, {b}) + (1 - s_b({b}))".format(e=e, b=b)
+                    name = "c_e({e}) <= x_eb({e}, {b}) + (1 - s_b({b}))".format(
+                        e=e, b=b
+                    )
                     m.addConstr(c_e[e] <= x_eb[e][b] + (1 - s_b[b]), name)
                     print(name)
 
         # Add constraint: SUM_(r = 1..n_r) a_hr * x_er <= b_h + 2 * (1 - c_eh)
         for e in range(n_e):
             for h in range(n_h):
-                name = "SUM_(r = 1..n_r) a_hr({h}, r) * x_er({e}, r) <= b_h({h}) + 2 * (1 - c_eh({e}, {h}))"\
-                    .format(e=e, h=h)
-                m.addConstr(sum(a_hr[h][r] * x_er[e][r] for r in range(n_r)) <= b_h[h] + 2 * (1 - c_eh[e][h]), name)
+                name = "SUM_(r = 1..n_r) a_hr({h}, r) * x_er({e}, r) <= b_h({h}) + 2 * (1 - c_eh({e}, {h}))".format(
+                    e=e, h=h
+                )
+                m.addConstr(
+                    sum(a_hr[h][r] * x_er[e][r] for r in range(n_r))
+                    <= b_h[h] + 2 * (1 - c_eh[e][h]),
+                    name,
+                )
                 print(name)
 
         # Add constraint: SUM_(r = 1..n_r) a_hr * x_er >= b_h - mu - 2 * c_eh
         for e in range(n_e):
             for h in range(n_h):
-                name = "SUM_(r = 1..n_r) a_hr({h}, r) * x_er({e}, r) >= b_h({h}) - mu - 2 * c_eh({e}, {h})"\
-                    .format(e=e, h=h)
-                m.addConstr(sum(a_hr[h][r] * x_er[e][r] for r in range(n_r)) >= b_h[h] + mu - 2 * c_eh[e][h], name)
+                name = "SUM_(r = 1..n_r) a_hr({h}, r) * x_er({e}, r) >= b_h({h}) - mu - 2 * c_eh({e}, {h})".format(
+                    e=e, h=h
+                )
+                m.addConstr(
+                    sum(a_hr[h][r] * x_er[e][r] for r in range(n_r))
+                    >= b_h[h] + mu - 2 * c_eh[e][h],
+                    name,
+                )
                 print(name)
 
         # Add constraint: SUM_(h = 1..n_h) s_h + SUM_(b = 1..n_b) s_b <= k
         name = "SUM_(h = 1..n_h) s_h(h) + SUM_(b = 1..n_b) s_b(b) <= k"
-        m.addConstr(sum(s_h[h] for h in range(n_h)) + sum(s_b[b] for b in range(2 * n_b)) <= k, name)
+        m.addConstr(
+            sum(s_h[h] for h in range(n_h)) + sum(s_b[b] for b in range(2 * n_b)) <= k,
+            name,
+        )
         print(name)
 
         # Hack example
@@ -299,11 +395,11 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
         # m.addConstr(s_h[1] == 1)
         # m.addConstr(s_h[2] == 0)
         # m.addConstr(s_h[3] == 0)
-#
+        #
         # m.addConstr(a_hr[0][0] == -1)
         # m.addConstr(a_hr[0][1] == -0.5)
         # m.addConstr(b_h[0] == -0.2)
-#
+        #
         # m.addConstr(a_hr[1][0] == 1)
         # m.addConstr(a_hr[1][1] == 0)
         # m.addConstr(b_h[1] == 0.75)
@@ -313,7 +409,7 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
         for v in m.getVars():
             print(v.varName, v.x)
 
-        print('Obj:', m.objVal)
+        print("Obj:", m.objVal)
 
         print()
 
@@ -325,7 +421,12 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
             if int(s_h[h].x) == 1:
                 coefficients = [Real(float(a_hr[h][r].x)) for r in range(n_r)]
                 constant = Real(float(b_h[h].x))
-                linear_sum = Plus([Times(c, domain.get_symbol(v)) for c, v in zip(coefficients, domain.real_vars)])
+                linear_sum = Plus(
+                    [
+                        Times(c, domain.get_symbol(v))
+                        for c, v in zip(coefficients, domain.real_vars)
+                    ]
+                )
                 rule.append(LE(linear_sum, constant))
 
         for b in range(2 * n_b):
@@ -334,8 +435,15 @@ class GreedyMilpRuleLearner(GreedyRuleLearner):
                 rule.append(var if b < n_b else Not(var))
 
         print("Features", x_er[4][0], x_er[4][1])
-        print(sum(a_hr[1][r].x * x_er[4][r] for r in range(n_r)), "<=", b_h[1].x + 2 * (1 - c_eh[4][1].x))
-        print(sum(a_hr[1][r].x * x_er[4][r] for r in range(n_r)), ">=", b_h[1].x + mu - 2 * c_eh[4][1].x)
+        print(
+            sum(a_hr[1][r].x * x_er[4][r] for r in range(n_r)),
+            "<=",
+            b_h[1].x + 2 * (1 - c_eh[4][1].x),
+        )
+        print(
+            sum(a_hr[1][r].x * x_er[4][r] for r in range(n_r)),
+            ">=",
+            b_h[1].x + mu - 2 * c_eh[4][1].x,
+        )
 
         return rule
-

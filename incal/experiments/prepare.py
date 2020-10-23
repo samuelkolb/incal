@@ -18,7 +18,14 @@ import numpy as np
 import pickledb
 import pysmt.shortcuts as smt
 import pysmt.environment
-from pywmi import Domain, smt_to_nested, evaluate, RejectionEngine, export_domain, nested_to_smt
+from pywmi import (
+    Domain,
+    smt_to_nested,
+    evaluate,
+    RejectionEngine,
+    export_domain,
+    nested_to_smt,
+)
 from pywmi.domain import Density, import_domain
 from pywmi.sample import uniform
 
@@ -27,7 +34,11 @@ from .find_operators import OperatorWalker
 
 
 def get_res_root(*args):
-    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))), "res", *args)
+    return os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))),
+        "res",
+        *args
+    )
 
 
 def get_benchmark_dir():
@@ -52,9 +63,9 @@ def get_summary_file():
 
 # https://stackoverflow.com/a/11385480/253387
 def fix_zip_file(zip_file):
-    with open(zip_file, 'r+b') as f:
+    with open(zip_file, "r+b") as f:
         data = f.read()
-        pos = data.find(b'\x50\x4b\x05\x06')  # End of central directory signature
+        pos = data.find(b"\x50\x4b\x05\x06")  # End of central directory signature
         if pos > 0:
             f.seek(pos + 22)  # size of 'ZIP end of central directory record'
             f.truncate()
@@ -88,13 +99,14 @@ def prepare_smt_lib_benchmark():
 
     zip_file = os.path.join(benchmark_folder, "qf_lra.zip")
     zip_checksums = [
-        'd0031a9e1799f78e72951aa4bacedaff7c0d027905e5de29b5980083b9c51138def165cc18fff205c1cdd0ef60d5d95cf179f0d82ec41ba489acf4383f3e783c']  # ,
+        "d0031a9e1799f78e72951aa4bacedaff7c0d027905e5de29b5980083b9c51138def165cc18fff205c1cdd0ef60d5d95cf179f0d82ec41ba489acf4383f3e783c"
+    ]  # ,
     # '8aa31ada44bbb6705ce58f1f50870da4f3b2d2d27065f3c5c6a17bd484a4cb7eab0c1d55a8d78e48217e66c5b2d876c0708516fb8a383d1ea82a6d4f1278d476']
     qf_lra_folder = os.path.join(benchmark_folder, "QF_LRA")
     if not os.path.exists(qf_lra_folder) and not os.path.exists(zip_file):
         print("Downloading ZIP file to {}".format(zip_file))
         url = "http://smt-lib.loria.fr/zip/QF_LRA.zip"
-        with urllib.request.urlopen(url) as response, open(zip_file, 'wb') as out_file:
+        with urllib.request.urlopen(url) as response, open(zip_file, "wb") as out_file:
             shutil.copyfileobj(response, out_file)
     if not os.path.exists(qf_lra_folder):
         print("Extracting ZIP file {}".format(zip_file))
@@ -102,7 +114,7 @@ def prepare_smt_lib_benchmark():
             fix_zip_file(zip_file)
             if checksum(zip_file) not in zip_checksums:
                 raise RuntimeError("Corrupted file download")
-        with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        with zipfile.ZipFile(zip_file, "r") as zip_ref:
             zip_ref.extractall(benchmark_folder)
 
     summary_file = os.path.join(benchmark_folder, "qf_lra_summary.pickle")
@@ -118,7 +130,7 @@ def prepare_smt_lib_benchmark():
         os.makedirs(cache_dir)
 
     for filename in glob.glob("{}/**/*.smt*".format(qf_lra_folder), recursive=True):
-        name = filename[filename.find("QF_LRA"):]
+        name = filename[filename.find("QF_LRA") :]
         if name not in summary:
             summary[name] = dict()
 
@@ -149,7 +161,12 @@ def prepare_smt_lib_benchmark():
                 print("Error")
                 continue
 
-        keys = ["real_variables_count", "bool_variables_count", "operators", "half_spaces"]
+        keys = [
+            "real_variables_count",
+            "bool_variables_count",
+            "operators",
+            "half_spaces",
+        ]
         if any(k not in entry for k in keys) and (domain is None or formula is None):
             print("Loading {}".format(name))
             density = Density.import_from(density_filename)
@@ -187,8 +204,11 @@ def select_benchmark_files(entry_filter, summary_file=None):
 
 
 def benchmark_filter(entry):
-    return "real_variables_count" in entry and entry["real_variables_count"] + entry["bool_variables_count"] <= 10 and \
-           "=" not in entry["operators"]
+    return (
+        "real_variables_count" in entry
+        and entry["real_variables_count"] + entry["bool_variables_count"] <= 10
+        and "=" not in entry["operators"]
+    )
 
 
 def edit_summary(callback):
@@ -205,7 +225,9 @@ def prepare_ratios():
     sample_count = 1000
     bounds_pool = [(-1, 1), (-10, 10), (-100, 100), (-1000, 1000)]
     ratios = dict()
-    for name, entry, density_filename in select_benchmark_files(lambda e: "bounds" not in e and benchmark_filter(e)):
+    for name, entry, density_filename in select_benchmark_files(
+        lambda e: "bounds" not in e and benchmark_filter(e)
+    ):
         print("Finding ratios for {}".format(name))
         pysmt.environment.push_env()
         pysmt.environment.get_env().enable_infix_notation = True
@@ -215,7 +237,9 @@ def prepare_ratios():
 
         result_bounds = []
         result_ratios = []
-        for bounds in itertools.product(*[bounds_pool for _ in range(len(domain.real_vars))]):
+        for bounds in itertools.product(
+            *[bounds_pool for _ in range(len(domain.real_vars))]
+        ):
             var_bounds = dict(zip(domain.real_vars, bounds))
             restricted_domain = Domain(domain.variables, domain.var_types, var_bounds)
             samples = uniform(restricted_domain, sample_count)
@@ -253,11 +277,17 @@ def prepare_samples(n, sample_size, reset):
                 return True
             else:
                 return reset or any(
-                    len([
-                        s for s in _entry["samples"]
-                        if s["sample_size"] == sample_size and s["bounds"] == _bounds[0]]
-                    ) < n
-                    for _bounds in _entry["bounds"] if 0.2 <= _bounds[1] <= 0.8
+                    len(
+                        [
+                            s
+                            for s in _entry["samples"]
+                            if s["sample_size"] == sample_size
+                            and s["bounds"] == _bounds[0]
+                        ]
+                    )
+                    < n
+                    for _bounds in _entry["bounds"]
+                    if 0.2 <= _bounds[1] <= 0.8
                 )
         return False
 
@@ -274,16 +304,29 @@ def prepare_samples(n, sample_size, reset):
                 continue
 
             print(i, bounds, ratio)
-            previous_samples = [] if reset else ([s for s in entry.get("samples", [])
-                                                 if s["sample_size"] == sample_size and s["bounds"] == bounds])
-            bounded_domain = Domain(density.domain.variables, density.domain.var_types, bounds)
+            previous_samples = (
+                []
+                if reset
+                else (
+                    [
+                        s
+                        for s in entry.get("samples", [])
+                        if s["sample_size"] == sample_size and s["bounds"] == bounds
+                    ]
+                )
+            )
+            bounded_domain = Domain(
+                density.domain.variables, density.domain.var_types, bounds
+            )
 
             for j in range(n - len(previous_samples)):
                 seed = seeds[j]
-                samples_filename = "{}{}{}.{}.{}.{}.sample.npy".format(samples_dir, os.path.sep, name, sample_size,
-                                                                       seed, i)
-                labels_filename = "{}{}{}.{}.{}.{}.labels.npy".format(samples_dir, os.path.sep, name, sample_size, seed,
-                                                                      i)
+                samples_filename = "{}{}{}.{}.{}.{}.sample.npy".format(
+                    samples_dir, os.path.sep, name, sample_size, seed, i
+                )
+                labels_filename = "{}{}{}.{}.{}.{}.labels.npy".format(
+                    samples_dir, os.path.sep, name, sample_size, seed, i
+                )
 
                 if not os.path.exists(os.path.dirname(samples_filename)):
                     os.makedirs(os.path.dirname(samples_filename))
@@ -295,13 +338,15 @@ def prepare_samples(n, sample_size, reset):
                 np.save(samples_filename, samples)
                 np.save(labels_filename, labels)
 
-                samples_dict[name].append({
-                    "bounds": bounds,
-                    "seed": seed,
-                    "samples_filename": samples_filename,
-                    "labels_filename": labels_filename,
-                    "sample_size": sample_size
-                })
+                samples_dict[name].append(
+                    {
+                        "bounds": bounds,
+                        "seed": seed,
+                        "samples_filename": samples_filename,
+                        "labels_filename": labels_filename,
+                        "sample_size": sample_size,
+                    }
+                )
 
         pysmt.environment.pop_env()
 
@@ -313,7 +358,7 @@ def prepare_samples(n, sample_size, reset):
 
 
 def get_synthetic_db(directory, auto_dump=True):
-    db_filename = os.path.join(directory, 'synthetic.db')
+    db_filename = os.path.join(directory, "synthetic.db")
     return pickledb.load(db_filename, auto_dump)
 
 
@@ -322,7 +367,9 @@ def prepare_synthetic(input_directory, output_directory, runs, sample_size):
 
     db = get_synthetic_db(output_directory, True)
     os.makedirs(output_directory)
-    for filename in glob.glob("{}/**/synthetics*.txt".format(input_directory), recursive=True):
+    for filename in glob.glob(
+        "{}/**/synthetics*.txt".format(input_directory), recursive=True
+    ):
         pysmt.environment.push_env()
         pysmt.environment.get_env().enable_infix_notation = True
         with open(filename) as file_reference:
@@ -334,7 +381,9 @@ def prepare_synthetic(input_directory, output_directory, runs, sample_size):
         if not db.exists(name):
             domain = import_domain(flat["synthetic_problem"]["problem"]["domain"])
             formula = nested_to_smt(flat["synthetic_problem"]["problem"]["theory"])
-            Density(domain, formula, smt.Real(1.0)).export_to(os.path.join(output_directory, "{}.density".format(name)))
+            Density(domain, formula, smt.Real(1.0)).export_to(
+                os.path.join(output_directory, "{}.density".format(name))
+            )
             entry = {
                 "domain": export_domain(domain),
                 "generation": {
@@ -344,7 +393,7 @@ def prepare_synthetic(input_directory, output_directory, runs, sample_size):
                     "structure": flat["synthetic_problem"]["cnf_or_dnf"],
                 },
                 "formula": smt_to_nested(formula),
-                "samples": []
+                "samples": [],
             }
         else:
             entry = dict(db.get(name))
@@ -366,12 +415,14 @@ def prepare_synthetic(input_directory, output_directory, runs, sample_size):
             np.save(os.path.join(output_directory, samples_file), data)
             labels = evaluate(domain, formula, data)
             np.save(os.path.join(output_directory, labels_file), labels)
-            samples.append({
-                "sample_size": sample_size,
-                "seed": seed,
-                "samples_file": samples_file,
-                "labels_file": labels_file
-            })
+            samples.append(
+                {
+                    "sample_size": sample_size,
+                    "seed": seed,
+                    "samples_file": samples_file,
+                    "labels_file": labels_file,
+                }
+            )
 
         entry["samples"] = samples
         db.set(name, entry)

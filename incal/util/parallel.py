@@ -7,7 +7,9 @@ from subprocess import TimeoutExpired
 
 def run_command(args):
     command, time_out = args
-    with subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid) as process:
+    with subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, preexec_fn=os.setsid
+    ) as process:
         try:
             process.communicate(timeout=time_out)
         except TimeoutExpired:

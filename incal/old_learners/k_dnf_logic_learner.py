@@ -22,7 +22,9 @@ class KDNFLogicLearner(Learner):
         hyperplanes = []
         for indices in itertools.combinations(positive_indices, d):
             print(indices)
-            hyperplanes.append(Learner.fit_hyperplane(domain, [data[i][0] for i in indices]))
+            hyperplanes.append(
+                Learner.fit_hyperplane(domain, [data[i][0] for i in indices])
+            )
         boolean_data = []
         for i in range(len(data)):
             row = []
@@ -31,22 +33,34 @@ class KDNFLogicLearner(Learner):
             boolean_data.append(row)
         hyperplanes_smt = []
         for a, c in hyperplanes:
-            lhs_smt = Plus(Times(Real(float(a[j])), domain.get_symbol(real_vars[j])) for j in range(d))
+            lhs_smt = Plus(
+                Times(Real(float(a[j])), domain.get_symbol(real_vars[j]))
+                for j in range(d)
+            )
             hyperplanes_smt.append(LE(lhs_smt, Real(c)))
-            lhs_smt = Plus(Times(Real(-float(a[j])), domain.get_symbol(real_vars[j])) for j in range(d))
+            lhs_smt = Plus(
+                Times(Real(-float(a[j])), domain.get_symbol(real_vars[j]))
+                for j in range(d)
+            )
             hyperplanes_smt.append(LE(lhs_smt, Real(-c)))
             for i in range(len(data)):
                 lhs = 0
                 for j in range(d):
-                    lhs += float(a[j]) * float(data[i][0][real_vars[j]].constant_value())
+                    lhs += float(a[j]) * float(
+                        data[i][0][real_vars[j]].constant_value()
+                    )
                 boolean_data[i].append(lhs <= c)
                 boolean_data[i].append(lhs >= c)
         print(boolean_data)
         # logical_dnf_indices = [[i] for i in range(len(boolean_data[0]))]
         logical_dnf_indices = self.learn_logical(boolean_data, [row[1] for row in data])
         logical_dnf = [
-            [domain.get_symbol(bool_vars[i]) if i < len(bool_vars) else
-             hyperplanes_smt[i - len(bool_vars)] for i in conj_indices]
+            [
+                domain.get_symbol(bool_vars[i])
+                if i < len(bool_vars)
+                else hyperplanes_smt[i - len(bool_vars)]
+                for i in conj_indices
+            ]
             for conj_indices in logical_dnf_indices
         ]
         print(logical_dnf)
@@ -106,7 +120,11 @@ class GreedyLogicDNFLearner(KDNFLogicLearner):
             while len(candidates) > 0:
                 for pattern, count in candidates:
                     start_index = 0 if len(pattern) == 0 else max(pattern) + 1
-                    covered = [i for i in range(examples) if all(attributes[i, j] for j in pattern)]
+                    covered = [
+                        i
+                        for i in range(examples)
+                        if all(attributes[i, j] for j in pattern)
+                    ]
                     pos_covered = [i for i in covered if labels[i]]
                     neg_covered = [i for i in covered if not labels[i]]
 
@@ -114,7 +132,9 @@ class GreedyLogicDNFLearner(KDNFLogicLearner):
                         if counts[j] > lb:
                             pass
                 for j in range(self.max_literals):
-                    for features in itertools.combinations(list(range(len(boolean_data))), self.k):
+                    for features in itertools.combinations(
+                        list(range(len(boolean_data))), self.k
+                    ):
                         accept = True
                         for entry, label in zip(boolean_data, labels):
                             if not label and all(entry[j] for j in features):

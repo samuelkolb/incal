@@ -14,7 +14,11 @@ from generator import get_sample
 from inc_logging import LoggingObserver
 from incremental_learner import AllViolationsStrategy, RandomViolationsStrategy
 from k_cnf_smt_learner import KCnfSmtLearner
-from k_dnf_logic_learner import KDNFLogicLearner, GreedyLogicDNFLearner, GreedyMaxRuleLearner
+from k_dnf_logic_learner import (
+    KDNFLogicLearner,
+    GreedyLogicDNFLearner,
+    GreedyMaxRuleLearner,
+)
 from k_dnf_smt_learner import KDnfSmtLearner
 from k_dnf_greedy_learner import GreedyMilpRuleLearner
 from parameter_free_learner import learn_bottom_up
@@ -25,10 +29,11 @@ import parse
 from smt_print import pretty_print
 from virtual_data import OneClassStrategy
 
-mpl.use('TkAgg')
+mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 
 from k_dnf_learner import KDNFLearner
+
 
 def xy_domain():
     variables = ["x", "y"]
@@ -41,7 +46,7 @@ def simple_checker_problem():
 
     theory = Or(
         And(LE(Symbol("x", REAL), Real(0.5)), LE(Symbol("y", REAL), Real(0.5))),
-        And(GT(Symbol("x", REAL), Real(0.5)), GT(Symbol("y", REAL), Real(0.5)))
+        And(GT(Symbol("x", REAL), Real(0.5)), GT(Symbol("y", REAL), Real(0.5))),
     )
 
     return Problem(xy_domain(), theory, "simple_checker")
@@ -59,10 +64,26 @@ def checker_problem():
     var_domains = {"x": (0, 1), "y": (0, 1)}
 
     theory = Or(
-        And(LE(Symbol("x", REAL), Real(0.5)), LE(Symbol("y", REAL), Real(0.5)), Symbol("a", BOOL)),
-        And(GT(Symbol("x", REAL), Real(0.5)), GT(Symbol("y", REAL), Real(0.5)), Symbol("a", BOOL)),
-        And(GT(Symbol("x", REAL), Real(0.5)), LE(Symbol("y", REAL), Real(0.5)), Not(Symbol("a", BOOL))),
-        And(LE(Symbol("x", REAL), Real(0.5)), GT(Symbol("y", REAL), Real(0.5)), Not(Symbol("a", BOOL)))
+        And(
+            LE(Symbol("x", REAL), Real(0.5)),
+            LE(Symbol("y", REAL), Real(0.5)),
+            Symbol("a", BOOL),
+        ),
+        And(
+            GT(Symbol("x", REAL), Real(0.5)),
+            GT(Symbol("y", REAL), Real(0.5)),
+            Symbol("a", BOOL),
+        ),
+        And(
+            GT(Symbol("x", REAL), Real(0.5)),
+            LE(Symbol("y", REAL), Real(0.5)),
+            Not(Symbol("a", BOOL)),
+        ),
+        And(
+            LE(Symbol("x", REAL), Real(0.5)),
+            GT(Symbol("y", REAL), Real(0.5)),
+            Not(Symbol("a", BOOL)),
+        ),
     )
 
     return Problem(Domain(variables, var_types, var_domains), theory, "checker")
@@ -95,7 +116,11 @@ def shared_hyperplane_problem():
     h3 = LE(y, Plus(x, Real(-0.25)))
     # y >= x - 0.5
     h4 = GE(y, Plus(x, Real(-0.5)))
-    return Problem(domain, Or(And(shared1, shared2, h1, h2), And(shared1, shared2, h3, h4)), "shared")
+    return Problem(
+        domain,
+        Or(And(shared1, shared2, h1, h2), And(shared1, shared2, h3, h4)),
+        "shared",
+    )
 
 
 def cross_problem():
@@ -110,7 +135,9 @@ def cross_problem():
     middle_left = x >= 0.4
     middle_right = x <= 0.6
     right = x <= 0.8
-    theory = (top & middle_left & middle_right & bottom) | (left & middle_top & middle_bottom & right)
+    theory = (top & middle_left & middle_right & bottom) | (
+        left & middle_top & middle_bottom & right
+    )
     return Problem(domain, theory, "cross")
 
 
@@ -134,11 +161,13 @@ def ice_cream_problem():
     domain = Domain(variables, var_types, var_domains)
 
     chocolate, banana, weekend = (domain.get_symbol(v) for v in variables)
-    theory = (chocolate < 0.650)\
-             & (banana < 0.550)\
-             & (chocolate + 0.7 * banana <= 0.700)\
-             & (chocolate + 1.2 * banana <= 0.750)\
-             & (~weekend | (chocolate + 0.7 * banana <= 0.340))
+    theory = (
+        (chocolate < 0.650)
+        & (banana < 0.550)
+        & (chocolate + 0.7 * banana <= 0.700)
+        & (chocolate + 1.2 * banana <= 0.750)
+        & (~weekend | (chocolate + 0.7 * banana <= 0.340))
+    )
 
     return Problem(domain, theory, "ice_cream")
 
@@ -168,7 +197,11 @@ def sample(problem, n, seed=None):
             elif problem.domain.var_types[v] == BOOL:
                 instance[v] = True if random.random() < 0.5 else False
             else:
-                raise RuntimeError("Unknown variable type {} for variable {}", problem.domain.var_types[v], v)
+                raise RuntimeError(
+                    "Unknown variable type {} for variable {}",
+                    problem.domain.var_types[v],
+                    v,
+                )
         samples.append((instance, evaluate_assignment(problem, instance)))
     return samples
 
@@ -188,7 +221,10 @@ def draw_points(feat_x, feat_y, data, name, hyperplanes=None, truth=None):
 
     for i in range(len(data)):
         row = data[i]
-        point = (float(row[0][feat_x].constant_value()), float(row[0][feat_y].constant_value()))
+        point = (
+            float(row[0][feat_x].constant_value()),
+            float(row[0][feat_y].constant_value()),
+        )
         if truth[i][1] and row[1]:
             true_pos.append(point)
         elif truth[i][1] and not row[1]:
@@ -198,19 +234,34 @@ def draw_points(feat_x, feat_y, data, name, hyperplanes=None, truth=None):
         else:
             false_pos.append(point)
 
-    if len(true_pos) > 0: plt.scatter(*zip(*true_pos), c="green", marker="o")
-    if len(false_neg) > 0: plt.scatter(*zip(*false_neg), c="red", marker="o")
-    if len(true_neg) > 0: plt.scatter(*zip(*true_neg), c="green", marker="x")
-    if len(false_pos) > 0: plt.scatter(*zip(*false_pos), c="red", marker="x")
+    if len(true_pos) > 0:
+        plt.scatter(*zip(*true_pos), c="green", marker="o")
+    if len(false_neg) > 0:
+        plt.scatter(*zip(*false_neg), c="red", marker="o")
+    if len(true_neg) > 0:
+        plt.scatter(*zip(*true_neg), c="green", marker="x")
+    if len(false_pos) > 0:
+        plt.scatter(*zip(*false_pos), c="red", marker="x")
 
     if hyperplanes is not None:
-        planes = [constraint_to_hyperplane(h) for conj in hyperplanes for h in conj if h.is_le() or h.is_lt()]
+        planes = [
+            constraint_to_hyperplane(h)
+            for conj in hyperplanes
+            for h in conj
+            if h.is_le() or h.is_lt()
+        ]
         for plane in planes:
             print(plane)
             if plane[0][feat_y] == 0:
                 plt.plot([plane[1], plane[1]], [0, 1])
             else:
-                plt.plot([0, 1], [(plane[1] - plane[0][feat_x] * x) / plane[0][feat_y] for x in [0, 1]])
+                plt.plot(
+                    [0, 1],
+                    [
+                        (plane[1] - plane[0][feat_x] * x) / plane[0][feat_y]
+                        for x in [0, 1]
+                    ],
+                )
 
     plt.xlim([0, 1])
     plt.ylim([0, 1])
@@ -231,11 +282,15 @@ def constraint_to_hyperplane(constraint):
                     c, v = term.args()
                     coefficients[v.symbol_name()] = float(c.constant_value())
                 else:
-                    raise RuntimeError("Unexpected value, expected product, was {}".format(term))
+                    raise RuntimeError(
+                        "Unexpected value, expected product, was {}".format(term)
+                    )
         else:
             raise RuntimeError("Unexpected value, expected sum, was {}".format(left))
         return coefficients, float(right.constant_value())
-    raise RuntimeError("Unexpected constraint, expected inequality, was {}".format(constraint))
+    raise RuntimeError(
+        "Unexpected constraint, expected inequality, was {}".format(constraint)
+    )
 
 
 def find_border_points(domain, data):
@@ -256,7 +311,10 @@ def find_border_points(domain, data):
         closest_others.append(closest_other)
 
     for i in range(len(data)):
-        if dist[i][closest_others[i]] == dist[closest_others[i]][closest_others[closest_others[i]]]:
+        if (
+            dist[i][closest_others[i]]
+            == dist[closest_others[i]][closest_others[closest_others[i]]]
+        ):
             border_points.add(i)
             border_points.add(closest_others[i])
 
@@ -304,10 +362,14 @@ def draw_border_points(feat_x, feat_y, data, border_indices, name):
         else:
             irrelevant_neg.append(point)
 
-    if len(relevant_pos) > 0: plt.scatter(*zip(*relevant_pos), c="green", marker="o")
-    if len(irrelevant_pos) > 0: plt.scatter(*zip(*irrelevant_pos), c="grey", marker="o")
-    if len(relevant_neg) > 0: plt.scatter(*zip(*relevant_neg), c="green", marker="x")
-    if len(irrelevant_neg) > 0: plt.scatter(*zip(*irrelevant_neg), c="grey", marker="x")
+    if len(relevant_pos) > 0:
+        plt.scatter(*zip(*relevant_pos), c="green", marker="o")
+    if len(irrelevant_pos) > 0:
+        plt.scatter(*zip(*irrelevant_pos), c="grey", marker="o")
+    if len(relevant_neg) > 0:
+        plt.scatter(*zip(*relevant_neg), c="green", marker="x")
+    if len(irrelevant_neg) > 0:
+        plt.scatter(*zip(*irrelevant_neg), c="grey", marker="x")
 
     plt.xlim([0, 1])
     plt.ylim([0, 1])
@@ -323,7 +385,11 @@ def learn_parameter_free(problem, data, seed):
         learner = KCnfSmtLearner(_k, _h, RandomViolationsStrategy(10))
         dir_name = "../output/{}".format(problem.name)
         img_name = "{}_{}_{}_{}_{}_{}".format(learner.name, i, _k, _h, len(data), seed)
-        learner.add_observer(plotting.PlottingObserver(problem.domain, data, dir_name, img_name, feat_x, feat_y))
+        learner.add_observer(
+            plotting.PlottingObserver(
+                problem.domain, data, dir_name, img_name, feat_x, feat_y
+            )
+        )
 
         initial_indices = random.sample(list(range(len(data))), 20)
 
@@ -340,11 +406,17 @@ def learn_one_class(problem, data, seed):
     data = [(row, label) for row, label in data if label]
 
     def learn_inc(_data, i, _k, _h):
-        learner = KCnfSmtLearner(_k, _h, OneClassStrategy(RandomViolationsStrategy(1), thresholds))
+        learner = KCnfSmtLearner(
+            _k, _h, OneClassStrategy(RandomViolationsStrategy(1), thresholds)
+        )
         dir_name = "../output/{}_one_class".format(problem.name)
         img_name = "{}_{}_{}_{}_{}_{}".format(learner.name, i, _k, _h, len(data), seed)
 
-        learner.add_observer(plotting.PlottingObserver(problem.domain, data, dir_name, img_name, feat_x, feat_y))
+        learner.add_observer(
+            plotting.PlottingObserver(
+                problem.domain, data, dir_name, img_name, feat_x, feat_y
+            )
+        )
 
         # Filter boolean versions
         # learner.add_observer(plotting.PlottingObserver(data, dir_name + "/week", img_name, "chocolate", "banana",
@@ -370,9 +442,19 @@ def learn_one_class_sample(problem, data, seed, negative_samples=None):
     real_vars = problem.domain.real_vars
     bool_vars = problem.domain.bool_vars
 
-    def l1(p1, p2): return max(abs(p1[r] - p2[r]) for r in real_vars) if all(p1[b] == p2[b] for b in bool_vars) else 1
+    def l1(p1, p2):
+        return (
+            max(abs(p1[r] - p2[r]) for r in real_vars)
+            if all(p1[b] == p2[b] for b in bool_vars)
+            else 1
+        )
 
-    def l2(p1, p2): return math.sqrt(sum((p1[r] - p2[r])**2 for r in real_vars)) if all(p1[b] == p2[b] for b in bool_vars) else 1
+    def l2(p1, p2):
+        return (
+            math.sqrt(sum((p1[r] - p2[r]) ** 2 for r in real_vars))
+            if all(p1[b] == p2[b] for b in bool_vars)
+            else 1
+        )
 
     negatives = []
     while len(negatives) < negative_samples:
@@ -388,7 +470,11 @@ def learn_one_class_sample(problem, data, seed, negative_samples=None):
         dir_name = "../output/{}_one_class_sample".format(problem.name)
         img_name = "{}_{}_{}_{}_{}_{}".format(learner.name, i, _k, _h, len(data), seed)
 
-        learner.add_observer(plotting.PlottingObserver(problem.domain, data, dir_name, img_name, feat_x, feat_y))
+        learner.add_observer(
+            plotting.PlottingObserver(
+                problem.domain, data, dir_name, img_name, feat_x, feat_y
+            )
+        )
         learner.add_observer(LoggingObserver(None, seed, True, strategy))
 
         # Filter boolean versions
@@ -488,13 +574,13 @@ def main():
     # print(list(enumerate(domain.bool_vars)))
 
     # if len(domain.real_vars) == 2:
-        # for bool_assignment in itertools.product([True, False], repeat=len(domain.bool_vars)):
-            # bool_str = "_".join(("" if val else "not_") + var for var, val in zip(domain.bool_vars, bool_assignment))
-            # filtered_learned = filter_data(learned_labels, bool_assignment)
-            # filtered_data = filter_data(data, bool_assignment)
-            # print("Actual labels")
-            # print("\n".join("{}\tvs {}".format(filtered_data[i][1], filtered_learned[i][1]) for i in range(len(filtered_data))))
-            # draw_points("x", "y", filtered_learned, img_name + bool_str, hyperplane_dnf, truth=filtered_data)
+    # for bool_assignment in itertools.product([True, False], repeat=len(domain.bool_vars)):
+    # bool_str = "_".join(("" if val else "not_") + var for var, val in zip(domain.bool_vars, bool_assignment))
+    # filtered_learned = filter_data(learned_labels, bool_assignment)
+    # filtered_data = filter_data(data, bool_assignment)
+    # print("Actual labels")
+    # print("\n".join("{}\tvs {}".format(filtered_data[i][1], filtered_learned[i][1]) for i in range(len(filtered_data))))
+    # draw_points("x", "y", filtered_learned, img_name + bool_str, hyperplane_dnf, truth=filtered_data)
     # draw_points("x", "y", learned_labels, img_name + "_a", hyperplane_dnf, truth=data)
     # draw_points("x", "y", learned_labels, img_name + "_not_a", hyperplane_dnf, truth=data)
 

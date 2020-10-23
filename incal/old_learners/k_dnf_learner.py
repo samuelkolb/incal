@@ -8,7 +8,15 @@ from learner import Learner
 
 
 class KDNFLearner(Learner):
-    def __init__(self, k, max_hyperplanes, alpha, negated_hyperplanes=True, min_covered=None, max_terms=None):
+    def __init__(
+        self,
+        k,
+        max_hyperplanes,
+        alpha,
+        negated_hyperplanes=True,
+        min_covered=None,
+        max_terms=None,
+    ):
         self.k = k
         self.max_hyperplanes = max_hyperplanes
         self.alpha = alpha
@@ -23,74 +31,133 @@ class KDNFLearner(Learner):
 
         print("Data")
         for row, l in data:
-            print(*(["{}: {:.2f}".format(v, Learner._convert(row[v])) for v in domain.variables] + [l]))
+            print(
+                *(
+                    [
+                        "{}: {:.2f}".format(v, Learner._convert(row[v]))
+                        for v in domain.variables
+                    ]
+                    + [l]
+                )
+            )
         print()
 
         # Computed constants
         n_f = len(domain.variables)
-        n_h = (2 * self.max_hyperplanes) if self.negated_hyperplanes else self.max_hyperplanes
+        n_h = (
+            (2 * self.max_hyperplanes)
+            if self.negated_hyperplanes
+            else self.max_hyperplanes
+        )
         n_d = len(data)
         k = self.k
         naive_misclassification = float(Learner._get_misclassification(data))
 
         x = [[Learner._convert(row[v]) for v in domain.variables] for row, _ in data]
 
-
         # Variables
-        s_h = [m.addVar(vtype=GRB.BINARY, name="s_H({h})".format(h=h)) for h in range(n_h)]
-        s_d = [m.addVar(vtype=GRB.BINARY, name="s_D({i})".format(i=i)) for i in range(n_d)]
+        s_h = [
+            m.addVar(vtype=GRB.BINARY, name="s_H({h})".format(h=h)) for h in range(n_h)
+        ]
+        s_d = [
+            m.addVar(vtype=GRB.BINARY, name="s_D({i})".format(i=i)) for i in range(n_d)
+        ]
 
         z_h = [
-            [m.addVar(vtype=GRB.BINARY, name="z_H({h}, {c})".format(h=h, c=c)) for c in range(k)]
+            [
+                m.addVar(vtype=GRB.BINARY, name="z_H({h}, {c})".format(h=h, c=c))
+                for c in range(k)
+            ]
             for h in range(n_h)
         ]
         z_d = [
-            [m.addVar(vtype=GRB.BINARY, name="z_D({i}, {c})".format(i=i, c=c)) for c in range(k)]
+            [
+                m.addVar(vtype=GRB.BINARY, name="z_D({i}, {c})".format(i=i, c=c))
+                for c in range(k)
+            ]
             for i in range(n_d)
         ]
         z_ih = [
-            [m.addVar(vtype=GRB.BINARY, name="z_IH({i}, {h})".format(i=i, h=h)) for h in range(n_h)]
+            [
+                m.addVar(vtype=GRB.BINARY, name="z_IH({i}, {h})".format(i=i, h=h))
+                for h in range(n_h)
+            ]
             for i in range(n_d)
         ]
         z_ihc = [
             [
-                [m.addVar(vtype=GRB.BINARY, name="z_IHC({i}, {h}, {c})".format(i=i, h=h, c=c)) for c in range(k)]
+                [
+                    m.addVar(
+                        vtype=GRB.BINARY,
+                        name="z_IHC({i}, {h}, {c})".format(i=i, h=h, c=c),
+                    )
+                    for c in range(k)
+                ]
                 for h in range(n_h)
             ]
             for i in range(n_d)
         ]
 
         a = [
-            [m.addVar(vtype=GRB.CONTINUOUS, lb=-1, ub=1, name="a({h}, {j})".format(h=h, j=j)) for j in range(n_f)]
+            [
+                m.addVar(
+                    vtype=GRB.CONTINUOUS,
+                    lb=-1,
+                    ub=1,
+                    name="a({h}, {j})".format(h=h, j=j),
+                )
+                for j in range(n_f)
+            ]
             for h in range(n_h / 2 if self.negated_hyperplanes else n_h)
         ]
-        b = [m.addVar(vtype=GRB.CONTINUOUS, lb=-1, ub=1, name="b({h})".format(h=h))
-             for h in range(n_h / 2 if self.negated_hyperplanes else n_h)]
+        b = [
+            m.addVar(vtype=GRB.CONTINUOUS, lb=-1, ub=1, name="b({h})".format(h=h))
+            for h in range(n_h / 2 if self.negated_hyperplanes else n_h)
+        ]
         print()
 
         # Set objective
-        misclassification = sum(1 - s_d[i] if data[i][1] else s_d[i] for i in range(n_d))
-        m.setObjective(misclassification / naive_misclassification + self.alpha * sum(s_h), GRB.MINIMIZE)
+        misclassification = sum(
+            1 - s_d[i] if data[i][1] else s_d[i] for i in range(n_d)
+        )
+        m.setObjective(
+            misclassification / naive_misclassification + self.alpha * sum(s_h),
+            GRB.MINIMIZE,
+        )
 
         # Add constraint: SUM_(j = 1..n_h) a(h, j) * x(i, j) <= b(h) + M(1 - z_ih(i, h)) for all h, i
         for h in range(n_h / 2 if self.negated_hyperplanes else n_h):
             for i in range(n_d):
-                name = "SUM_(j = 1..n_H) a({h}, j) * x({i}, j) <= b({h}) + M(1 - z_IH({i}, {h}))".format(h=h, i=i)
-                m.addConstr(sum(a[h][j] * x[i][j] for j in range(n_f)) <= b[h] + (n_f + 1) * (1 - z_ih[i][h]), name)
+                name = "SUM_(j = 1..n_H) a({h}, j) * x({i}, j) <= b({h}) + M(1 - z_IH({i}, {h}))".format(
+                    h=h, i=i
+                )
+                m.addConstr(
+                    sum(a[h][j] * x[i][j] for j in range(n_f))
+                    <= b[h] + (n_f + 1) * (1 - z_ih[i][h]),
+                    name,
+                )
                 print(name)
         print()
 
         for h in range(n_h / 2 if self.negated_hyperplanes else n_h):
             for i in range(n_d):
-                name = "SUM_(j = 1..n_H) a({h}, j) * x({i}, j) >= b({h}) - mu - M * z_IH({i}, {h})".format(h=h, i=i)
-                m.addConstr(sum(a[h][j] * x[i][j] for j in range(n_f)) >= b[h] - self.mu - (n_f + 1) * z_ih[i][h], name)
+                name = "SUM_(j = 1..n_H) a({h}, j) * x({i}, j) >= b({h}) - mu - M * z_IH({i}, {h})".format(
+                    h=h, i=i
+                )
+                m.addConstr(
+                    sum(a[h][j] * x[i][j] for j in range(n_f))
+                    >= b[h] - self.mu - (n_f + 1) * z_ih[i][h],
+                    name,
+                )
                 print(name)
         print()
 
         if self.negated_hyperplanes:
             for h in range(n_h / 2):
                 for i in range(n_d):
-                    name = "z_IH({i}, {h}) = 1 - z_IH({i}, {hi})".format(i=i, h=h, hi=(h + n_h / 2))
+                    name = "z_IH({i}, {h}) = 1 - z_IH({i}, {hi})".format(
+                        i=i, h=h, hi=(h + n_h / 2)
+                    )
                     m.addConstr(z_ih[i][n_h / 2 + h] == 1 - z_ih[i][h], name)
                     print(name)
             print()
@@ -124,7 +191,9 @@ class KDNFLearner(Learner):
         for c in range(k):
             for h in range(n_h):
                 for i in range(n_d):
-                    name = "z_D({i}, {c}) <= z_IHC({i}, {h}, {c}) + (1 - z_H({h}, {c}))".format(c=c, h=h, i=i)
+                    name = "z_D({i}, {c}) <= z_IHC({i}, {h}, {c}) + (1 - z_H({h}, {c}))".format(
+                        c=c, h=h, i=i
+                    )
                     m.addConstr(z_d[i][c] <= z_ihc[i][h][c] + (1 - z_h[h][c]), name)
                     print(name)
         print()
@@ -142,14 +211,21 @@ class KDNFLearner(Learner):
         for c in range(k):
             for i in range(n_d):
                 name = "..."  # TODO name
-                m.addConstr(sum(z_h[h][c] for h in range(n_h)) - sum(z_ihc[i][h][c] for h in range(n_h)) >= 1 - z_d[i][c], name)
+                m.addConstr(
+                    sum(z_h[h][c] for h in range(n_h))
+                    - sum(z_ihc[i][h][c] for h in range(n_h))
+                    >= 1 - z_d[i][c],
+                    name,
+                )
                 print(name)
         print()
 
         # If (i, c) is selected, then there must be at least one selected tuple (h, c)
         for c in range(k):
             for i in range(n_d):
-                name = "SUM_(h = 1..n_H) z_H(h, {c}) >= 1 - (1 - z_D({i}, {c}))".format(c=c, i=i)
+                name = "SUM_(h = 1..n_H) z_H(h, {c}) >= 1 - (1 - z_D({i}, {c}))".format(
+                    c=c, i=i
+                )
                 m.addConstr(sum(z_h[h][c] for h in range(n_h)) >= 1 - (1 - z_d[i][c]))
                 print(name)
         print()
@@ -158,8 +234,12 @@ class KDNFLearner(Learner):
         for h in range(n_h):
             for c in range(k):
                 for i in range(n_d):
-                    name = "z_IH({i}, {h}) + z_H({h}, {c}) >= 2 - 2 * (1 - z_IHC({i}, {h}, {c}))".format(h=h, c=c, i=i)
-                    m.addConstr(z_ih[i][h] + z_h[h][c] >= 2 - 2 * (1 - z_ihc[i][h][c]), name)
+                    name = "z_IH({i}, {h}) + z_H({h}, {c}) >= 2 - 2 * (1 - z_IHC({i}, {h}, {c}))".format(
+                        h=h, c=c, i=i
+                    )
+                    m.addConstr(
+                        z_ih[i][h] + z_h[h][c] >= 2 - 2 * (1 - z_ihc[i][h][c]), name
+                    )
                     print(name)
         print()
 
@@ -167,7 +247,9 @@ class KDNFLearner(Learner):
         for h in range(n_h):
             for c in range(k):
                 for i in range(n_d):
-                    name = "z_IH({i}, {h}) + z_H({h}, {c}) <= 2 * z_IHC({i}, {h}, {c}) + 1".format(h=h, c=c, i=i)
+                    name = "z_IH({i}, {h}) + z_H({h}, {c}) <= 2 * z_IHC({i}, {h}, {c}) + 1".format(
+                        h=h, c=c, i=i
+                    )
                     m.addConstr(z_ih[i][h] + z_h[h][c] <= 2 * z_ihc[i][h][c] + 1, name)
                     print(name)
         print()
@@ -257,31 +339,30 @@ class KDNFLearner(Learner):
         # m.addConstr(a[0][0] == 1)
         # m.addConstr(a[0][1] == 0)
         # m.addConstr(b[0] == 0.5)
-#
+        #
         # m.addConstr(a[1][0] == 0)
         # m.addConstr(a[1][1] == 1)
         # m.addConstr(b[1] == 0.5)
-#
+        #
         # m.addConstr(a[2][0] == -1)
         # m.addConstr(a[2][1] == 0)
         # m.addConstr(b[2] == -0.6)
-#
+        #
         # m.addConstr(a[3][0] == 0)
         # m.addConstr(a[3][1] == -1)
         # m.addConstr(b[3] == -0.6)
-#
+        #
         # m.addConstr(s_h[0] == 1)
         # m.addConstr(s_h[1] == 1)
         # m.addConstr(s_h[2] == 1)
         # m.addConstr(s_h[3] == 1)
-
 
         m.optimize()
 
         for v in m.getVars():
             print(v.varName, v.x)
 
-        print('Obj:', m.objVal)
+        print("Obj:", m.objVal)
 
         print()
 
@@ -298,13 +379,19 @@ class KDNFLearner(Learner):
                         coefficients = [Real(float(a[h][j].x)) for j in range(n_f)]
                         constant = Real(float(b[h].x))
                     else:
-                        coefficients = [Real(-float(a[h - n_h / 2][j].x)) for j in range(n_f)]
+                        coefficients = [
+                            Real(-float(a[h - n_h / 2][j].x)) for j in range(n_f)
+                        ]
                         constant = Real(-float(b[h - n_h / 2].x))
-                    linear_sum = Plus([Times(c, domain.get_symbol(v)) for c, v in zip(coefficients, domain.variables)])
+                    linear_sum = Plus(
+                        [
+                            Times(c, domain.get_symbol(v))
+                            for c, v in zip(coefficients, domain.variables)
+                        ]
+                    )
                     conjunction.append(LE(linear_sum, constant))
             conjunctions.append(conjunction)
         return conjunctions
-
 
     @staticmethod
     def _get_misclassification(data):

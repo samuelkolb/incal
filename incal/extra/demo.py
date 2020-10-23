@@ -27,7 +27,9 @@ from parameter_free_learner import learn_bottom_up
 def learn(name, domain, h, data, seed):
     initial_size = 20
     violations_size = 10
-    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo", "results")
+    log_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "demo", "results"
+    )
     problem_name = hashlib.sha256(name).hexdigest()
 
     def learn_inc(_data, _k, _h):
@@ -35,7 +37,9 @@ def learn(name, domain, h, data, seed):
         learner = KCnfSmtLearner(_k, _h, violations_strategy)
         initial_indices = random.sample(list(range(len(data))), initial_size)
         log_file = os.path.join(log_dir, "{}_{}_{}.txt".format(problem_name, _k, _h))
-        learner.add_observer(inc_logging.LoggingObserver(log_file, seed, True, violations_strategy))
+        learner.add_observer(
+            inc_logging.LoggingObserver(log_file, seed, True, violations_strategy)
+        )
         learned_theory = learner.learn(domain, data, initial_indices)
         # learned_theory = Or(*[And(*planes) for planes in hyperplane_dnf])
         print("Learned theory:\n{}".format(parse.smt_to_nested(learned_theory)))
@@ -106,7 +110,7 @@ def compute_wmi(domain, query, variables):
         flat = {
             "domain": problem.export_domain(domain, to_str=False),
             "query": parse.smt_to_nested(query),
-            "variables": variables
+            "variables": variables,
         }
         json.dump(flat, f)
         with open("test.txt", "w") as f2:
@@ -114,7 +118,6 @@ def compute_wmi(domain, query, variables):
         f.close()
     finally:
         os.remove(f.name)
-
 
 
 if __name__ == "__main__":

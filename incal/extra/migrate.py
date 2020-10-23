@@ -31,16 +31,24 @@ def migrate_results(directory, bias=None):
         for problem_id in flat:
             for sample_size in flat[problem_id]:
                 if "bias" not in flat[problem_id][sample_size]:
-                    flat[problem_id][sample_size]["bias"] = "cnf" if bias is None else bias
+                    flat[problem_id][sample_size]["bias"] = (
+                        "cnf" if bias is None else bias
+                    )
 
-                seed, k, h = (flat[problem_id][sample_size][v] for v in ["seed", "k", "h"])
+                seed, k, h = (
+                    flat[problem_id][sample_size][v] for v in ["seed", "k", "h"]
+                )
 
-                pattern = r'{problem_id}_{size}_{seed}_\d+_\d+.txt' \
-                    .format(problem_id=problem_id, size=sample_size, seed=seed)
+                pattern = r"{problem_id}_{size}_{seed}_\d+_\d+.txt".format(
+                    problem_id=problem_id, size=sample_size, seed=seed
+                )
                 for old_file in os.listdir(directory):
                     if re.match(pattern, old_file):
                         new_file = old_file[:-4] + ".learning_log.txt"
-                        shutil.move(os.path.join(directory, old_file), os.path.join(directory, new_file))
+                        shutil.move(
+                            os.path.join(directory, old_file),
+                            os.path.join(directory, new_file),
+                        )
 
         with open(summary, "w") as f:
             json.dump(flat, f)
@@ -67,7 +75,7 @@ def calculate_accuracy(domain, target_formula, learned_formula):
 
     flat = {
         "domain": problem.export_domain(domain, False),
-        "query": parse.smt_to_nested(smt.Iff(target_formula, learned_formula))
+        "query": parse.smt_to_nested(smt.Iff(target_formula, learned_formula)),
     }
 
     print(domain)
@@ -75,9 +83,16 @@ def calculate_accuracy(domain, target_formula, learned_formula):
     print(pretty_print(learned_formula))
     # accuracy = list(compute_wmi(domain, [smt.Iff(target_formula, learned_formula)]))[0]
 
-    output = str(subprocess.check_output(["/Users/samuelkolb/Documents/PhD/wmi-pa/env/bin/python",
-                                     "/Users/samuelkolb/Documents/PhD/wmi-pa/experiments/client/run.py", "-s",
-                                     json.dumps(flat)]))
+    output = str(
+        subprocess.check_output(
+            [
+                "/Users/samuelkolb/Documents/PhD/wmi-pa/env/bin/python",
+                "/Users/samuelkolb/Documents/PhD/wmi-pa/experiments/client/run.py",
+                "-s",
+                json.dumps(flat),
+            ]
+        )
+    )
     accuracy = float(output.split(": ")[1])
     print(accuracy)
     return accuracy
@@ -86,7 +101,9 @@ def calculate_accuracy(domain, target_formula, learned_formula):
 def calculate_accuracy_approx(domain, target_formula, learned_formula, samples):
     bits_target = bitarray([test(target_formula, sample) for sample in samples])
     bits_learned = bitarray([test(learned_formula, sample) for sample in samples])
-    accuracy = ((bits_target & bits_learned) | (~bits_target & ~bits_learned)).count() / len(samples)
+    accuracy = (
+        (bits_target & bits_learned) | (~bits_target & ~bits_learned)
+    ).count() / len(samples)
     print(accuracy)
     return accuracy
 
@@ -101,11 +118,15 @@ def get_problem(data_dir, problem_id):
     try:
         with open(os.path.join(data_dir, "{}.txt".format(str(problem_id)))) as f:
             import generator
+
             s_problem = generator.import_synthetic_data(json.load(f))
         return s_problem.synthetic_problem.theory_problem
     except IOError:
-        with open(os.path.join(data_dir, "problems", "{}.txt".format(str(problem_id)))) as f:
+        with open(
+            os.path.join(data_dir, "problems", "{}.txt".format(str(problem_id)))
+        ) as f:
             import generator
+
             theory_problem = problem.import_problem(json.load(f))
 
         with open(os.path.join(data_dir, "summary.json"), "r") as f:
@@ -113,7 +134,9 @@ def get_problem(data_dir, problem_id):
         ratio_dict = flat["ratios"]
         lookup = flat["lookup"]
 
-        adapted_problem = adapt_domain_multiple(theory_problem, ratio_dict[lookup[problem_id]]["bounds"])
+        adapted_problem = adapt_domain_multiple(
+            theory_problem, ratio_dict[lookup[problem_id]]["bounds"]
+        )
 
         return adapted_problem
 
@@ -137,7 +160,9 @@ def add_accuracy(results_dir, data_dir=None, acc_sample_size=None, recompute=Fal
             timed_out = config.get("time_out", False)
             if not timed_out:
                 learned_formula = None
-                for message in get_log_messages(results_dir, config, p_id=problem_id, samples=sample_size):
+                for message in get_log_messages(
+                    results_dir, config, p_id=problem_id, samples=sample_size
+                ):
                     if message["type"] == "update":
                         learned_formula = parse.nested_to_smt(message["theory"])
 
@@ -146,7 +171,9 @@ def add_accuracy(results_dir, data_dir=None, acc_sample_size=None, recompute=Fal
 
                 if acc_sample_size is None:
                     if recompute or "exact_accuracy" not in config:
-                        config["exact_accuracy"] = calculate_accuracy(domain, target_formula, learned_formula)
+                        config["exact_accuracy"] = calculate_accuracy(
+                            domain, target_formula, learned_formula
+                        )
                 else:
                     if recompute or "approx_accuracy" not in config:
                         config["approx_accuracy"] = dict()
@@ -156,11 +183,17 @@ def add_accuracy(results_dir, data_dir=None, acc_sample_size=None, recompute=Fal
                     if len(acc_dict[acc_sample_size]) < 1:
                         seed = hash(time.time())
                         random.seed(seed)
-                        samples = [generator.get_sample(domain) for _ in range(acc_sample_size)]
-                        acc_dict[acc_sample_size].append({
-                            "acc": calculate_accuracy_approx(domain, target_formula, learned_formula, samples),
-                            "seed": seed,
-                        })
+                        samples = [
+                            generator.get_sample(domain) for _ in range(acc_sample_size)
+                        ]
+                        acc_dict[acc_sample_size].append(
+                            {
+                                "acc": calculate_accuracy_approx(
+                                    domain, target_formula, learned_formula, samples
+                                ),
+                                "seed": seed,
+                            }
+                        )
 
     dump_results(results_flat, results_dir)
 
@@ -194,7 +227,11 @@ def add_ratio(results_dir, data_dir=None, ratio_sample_size=None, recompute=Fals
         random.seed(seed)
         samples = [generator.get_sample(domain) for _ in range(ratio_sample_size)]
 
-        ratio = calculate_ratio(domain, formula) if ratio_sample_size is None else calculate_ratio_approx(formula, samples)
+        ratio = (
+            calculate_ratio(domain, formula)
+            if ratio_sample_size is None
+            else calculate_ratio_approx(formula, samples)
+        )
 
         for sample_size in results_flat[problem_id]:
             config = results_flat[problem_id][sample_size]
@@ -209,14 +246,20 @@ def add_ratio(results_dir, data_dir=None, ratio_sample_size=None, recompute=Fals
                 if ratio_sample_size not in ratio_dict:
                     ratio_dict[ratio_sample_size] = []
                 if len(ratio_dict[ratio_sample_size]) < 1:
-                    ratio_dict[ratio_sample_size].append({
-                        "ratio": ratio,
-                        "seed": seed,
-                    })
+                    ratio_dict[ratio_sample_size].append(
+                        {
+                            "ratio": ratio,
+                            "seed": seed,
+                        }
+                    )
 
     dump_results(results_flat, results_dir)
 
 
 if __name__ == "__main__":
     x = smt.Symbol("x", smt.REAL)
-    calculate_accuracy(problem.Domain(["x"], {"x": smt.REAL}, {"x": (0, 1)}), x <= smt.Real(0.5), x <= smt.Real(0.4))
+    calculate_accuracy(
+        problem.Domain(["x"], {"x": smt.REAL}, {"x": (0, 1)}),
+        x <= smt.Real(0.5),
+        x <= smt.Real(0.4),
+    )

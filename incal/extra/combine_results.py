@@ -37,19 +37,26 @@ def combine(output_dir, dirs, bias=None, prefix=None):
                 if sample_size not in flat[problem_id]:
                     flat[problem_id][sample_size] = input_flat[problem_id][sample_size]
                 else:
-                    raise RuntimeError("Attempting to overwrite sample size {} for problem {} from file {}"
-                                       .format(sample_size, problem_id, input_summary))
+                    raise RuntimeError(
+                        "Attempting to overwrite sample size {} for problem {} from file {}".format(
+                            sample_size, problem_id, input_summary
+                        )
+                    )
 
     for input_dir in dirs:
         for input_file in os.listdir(input_dir):
-            if fnmatch.fnmatch(input_file, '*.learning_log.txt'):
+            if fnmatch.fnmatch(input_file, "*.learning_log.txt"):
                 old_file = os.path.join(input_dir, input_file)
                 new_file = os.path.join(output_dir, input_file)
                 if not os.path.isfile(new_file):
                     shutil.copy(old_file, new_file)
                 else:
                     if not filecmp.cmp(old_file, new_file):
-                        raise RuntimeError("Attempting to overwrite {} with {}".format(new_file, old_file))
+                        raise RuntimeError(
+                            "Attempting to overwrite {} with {}".format(
+                                new_file, old_file
+                            )
+                        )
 
     with open(summary, "w") as f:
         json.dump(flat, f)
@@ -60,7 +67,9 @@ def parse():
     parser.add_argument("output_dir")
     parser.add_argument("dirs", nargs="*")
     parser.add_argument("-b", "--bias", default=None, help="Specify the bias")
-    parser.add_argument("-p", "--prefix", default=None, help="Specify the prefix for input dirs")
+    parser.add_argument(
+        "-p", "--prefix", default=None, help="Specify the prefix for input dirs"
+    )
     parsed = parser.parse_args()
     combine(parsed.output_dir, parsed.dirs, parsed.bias, parsed.prefix)
 

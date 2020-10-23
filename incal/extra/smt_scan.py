@@ -147,12 +147,19 @@ def import_problem(name, filename):
 
 
 def get_cache_name():
-    cache = os.path.join(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "demo"), "cache")
+    cache = os.path.join(
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "demo"
+        ),
+        "cache",
+    )
     return os.path.join(cache, "summary.json")
 
 
 def get_problem_file(problem_id):
-    return os.path.join(os.path.dirname(get_cache_name()), "problems", "{}.txt".format(problem_id))
+    return os.path.join(
+        os.path.dirname(get_cache_name()), "problems", "{}.txt".format(problem_id)
+    )
 
 
 def load():
@@ -178,9 +185,13 @@ def scan(full_dir, root_dir):
     matches = []
 
     for root, dir_names, file_names in os.walk(full_dir):
-        for filename in fnmatch.filter(file_names, '*.smt2'):
+        for filename in fnmatch.filter(file_names, "*.smt2"):
             full_path = os.path.abspath(os.path.join(root, filename))
-            matches.append(re.match("{r}{s}(.*)".format(s=os.path.sep, r=root_dir), full_path).group(1))
+            matches.append(
+                re.match(
+                    "{r}{s}(.*)".format(s=os.path.sep, r=root_dir), full_path
+                ).group(1)
+            )
 
     for match in matches:
         print(match)
@@ -197,11 +208,15 @@ def scan(full_dir, root_dir):
                 problems[match] = {
                     "loaded": True,
                     "var_count": len(imported_problem.domain.variables),
-                    "file_size": os.path.getsize(match)
+                    "file_size": os.path.getsize(match),
                 }
                 smt.reset_env()
             else:
-                problems[match] = {"loaded": False, "reason": "size", "file_size": os.path.getsize(match)}
+                problems[match] = {
+                    "loaded": False,
+                    "reason": "size",
+                    "file_size": os.path.getsize(match),
+                }
             counter += 1
             if counter >= 1:
                 dump(flat)
@@ -262,17 +277,23 @@ def analyze(root_dir):
             problem_file = get_problem_file(properties["id"])
             if not os.path.isfile(problem_file):
                 with open(problem_file, "w") as f:
-                    print(problem.export_problem(import_problem(name, smt_file)), file=f)
+                    print(
+                        problem.export_problem(import_problem(name, smt_file)), file=f
+                    )
 
             with open(problem_file, "r") as f:
                 target_problem = problem.import_problem(json.load(f))
 
             if "operators" not in properties:
-                properties["operators"] = OperatorWalker().find_operators(target_problem.theory)
+                properties["operators"] = OperatorWalker().find_operators(
+                    target_problem.theory
+                )
                 change = True
 
             if "half_spaces" not in properties:
-                properties["half_spaces"] = HalfSpaceWalker().find_half_spaces(target_problem.theory)
+                properties["half_spaces"] = HalfSpaceWalker().find_half_spaces(
+                    target_problem.theory
+                )
                 change = True
 
             if change:
@@ -280,11 +301,19 @@ def analyze(root_dir):
 
             if not has_equals(properties) and has_connectives(properties):
                 mode = "D" if has_disjunctions(properties) else "C"
-                information = [mode, var_count(properties), half_space_count(properties), file_size(properties), name]
+                information = [
+                    mode,
+                    var_count(properties),
+                    half_space_count(properties),
+                    file_size(properties),
+                    name,
+                ]
                 print(*[str(i) for i in information], sep="\t")
 
 
-def learn_formula(problem_id, domain, h, data, seed, log_dir, learn_all=False, learn_dnf=False):
+def learn_formula(
+    problem_id, domain, h, data, seed, log_dir, learn_all=False, learn_dnf=False
+):
     initial_size = 20
     violations_size = 10
     if not os.path.exists(log_dir):
@@ -300,8 +329,15 @@ def learn_formula(problem_id, domain, h, data, seed, log_dir, learn_all=False, l
             learner = KDnfSmtLearner(_k, _h, violations_strategy)
         else:
             learner = KCnfSmtLearner(_k, _h, violations_strategy)
-        log_file = os.path.join(log_dir, "{}_{}_{}_{}_{}.learning_log.txt".format(problem_id, len(data), seed, _k, _h))
-        learner.add_observer(inc_logging.LoggingObserver(log_file, seed, True, violations_strategy))
+        log_file = os.path.join(
+            log_dir,
+            "{}_{}_{}_{}_{}.learning_log.txt".format(
+                problem_id, len(data), seed, _k, _h
+            ),
+        )
+        learner.add_observer(
+            inc_logging.LoggingObserver(log_file, seed, True, violations_strategy)
+        )
         learned_theory = learner.learn(domain, data, initial_indices)
         # learned_theory = Or(*[And(*planes) for planes in hyperplane_dnf])
         print("Learned theory:\n{}".format(pretty_print(learned_theory)))
@@ -317,7 +353,12 @@ def learn_formula(problem_id, domain, h, data, seed, log_dir, learn_all=False, l
             flat = json.load(f)
     if problem_id not in flat:
         flat[problem_id] = {}
-    flat[problem_id][len(data)] = {"k": k, "h": h, "seed": seed, "bias": "dnf" if learn_dnf else "cnf"}
+    flat[problem_id][len(data)] = {
+        "k": k,
+        "h": h,
+        "seed": seed,
+        "bias": "dnf" if learn_dnf else "cnf",
+    }
     with open(overview, "w") as f:
         json.dump(flat, f)
 
@@ -329,14 +370,31 @@ def learn(sample_count, log_dir, learn_all=False, learn_dnf=False):
     seed = hash(time.time())
     random.seed(seed)
     for name, props in files.items():
-        if props["loaded"] and props["var_count"] < 10 and not has_equals(props) and has_disjunctions(props) and \
-                ratio_dict[name]["finite"] and 0.2 <= ratio_dict[name]["ratio"] <= 0.8:
+        if (
+            props["loaded"]
+            and props["var_count"] < 10
+            and not has_equals(props)
+            and has_disjunctions(props)
+            and ratio_dict[name]["finite"]
+            and 0.2 <= ratio_dict[name]["ratio"] <= 0.8
+        ):
             with open(get_problem_file(props["id"]), "r") as f:
                 target_problem = problem.import_problem(json.load(f))
-            adapted_problem = adapt_domain_multiple(target_problem, ratio_dict[name]["bounds"])
+            adapted_problem = adapt_domain_multiple(
+                target_problem, ratio_dict[name]["bounds"]
+            )
             samples = generator.get_problem_samples(adapted_problem, sample_count, 1)
             domain = adapted_problem.domain
-            learn_formula(props["id"], domain, len(props["half_spaces"]), samples, seed, log_dir, learn_all, learn_dnf)
+            learn_formula(
+                props["id"],
+                domain,
+                len(props["half_spaces"]),
+                samples,
+                seed,
+                log_dir,
+                learn_all,
+                learn_dnf,
+            )
             print(props["id"], name)
 
 
@@ -364,22 +422,33 @@ def ratios():
 
     sample_count = 100
     for name, props in files.items():
-        if props["loaded"] and props["var_count"] < 10 and not has_equals(props) and has_disjunctions(props):
+        if (
+            props["loaded"]
+            and props["var_count"] < 10
+            and not has_equals(props)
+            and has_disjunctions(props)
+        ):
             with open(get_problem_file(props["id"]), "r") as f:
                 target_problem = problem.import_problem(json.load(f))
 
             bounds_pool = [(-1, 1), (-10, 10), (-100, 100), (-1000, 1000)]
             domain = target_problem.domain
             result = {"finite": False, "samples": sample_count}
-            for bounds in itertools.product(*[bounds_pool for _ in range(len(domain.real_vars))]):
+            for bounds in itertools.product(
+                *[bounds_pool for _ in range(len(domain.real_vars))]
+            ):
                 var_bounds = dict(zip(domain.real_vars, bounds))
                 current_problem = adapt_domain_multiple(target_problem, var_bounds)
-                samples = generator.get_problem_samples(current_problem, sample_count, 1)
+                samples = generator.get_problem_samples(
+                    current_problem, sample_count, 1
+                )
                 positive_count = len([x for x, y in samples if y])
                 is_finite = positive_count not in [0, sample_count]
                 if is_finite:
                     ratio = positive_count / sample_count
-                    if not result["finite"] or abs(ratio - 0.5) < abs(result["ratio"] - 0.5):
+                    if not result["finite"] or abs(ratio - 0.5) < abs(
+                        result["ratio"] - 0.5
+                    ):
                         result["finite"] = True
                         result["ratio"] = ratio
                         result["bounds"] = var_bounds
@@ -415,8 +484,12 @@ def summarize(results_dir, output_type):
         for sample_size in results_flat[problem_id]:
             unique_sample_sizes.add(sample_size)
             timed_out = results_flat[problem_id][sample_size].get("time_out", False)
-            seed, k, h = (results_flat[problem_id][sample_size][v] for v in ["seed", "k", "h"])
-            log_file = "{}_{}_{}_{}_{}.learning_log.txt".format(problem_id, sample_size, seed, k, h)
+            seed, k, h = (
+                results_flat[problem_id][sample_size][v] for v in ["seed", "k", "h"]
+            )
+            log_file = "{}_{}_{}_{}_{}.learning_log.txt".format(
+                problem_id, sample_size, seed, k, h
+            )
             log_file_full = os.path.join(results_dir, log_file)
             if not timed_out:
                 durations = []
@@ -424,12 +497,16 @@ def summarize(results_dir, output_type):
                     for line in f:
                         flat = json.loads(line)
                         if flat["type"] == "update":
-                            durations.append(flat["selection_time"] + flat["solving_time"])
+                            durations.append(
+                                flat["selection_time"] + flat["solving_time"]
+                            )
                 duration_table[(name, sample_size)] = sum(durations)
                 if simple_output:
                     print(name, sample_size, sum(durations), sep="\t")
             else:
-                duration_table[(name, sample_size)] = "({})".format(results_flat[problem_id][sample_size]["time_limit"])
+                duration_table[(name, sample_size)] = "({})".format(
+                    results_flat[problem_id][sample_size]["time_limit"]
+                )
                 if simple_output:
                     print(name, sample_size, None, sep="\t")
             k_table[(name, sample_size)] = k
@@ -443,15 +520,30 @@ def summarize(results_dir, output_type):
 
     if output_type == "time":
         for name in names:
-            print(name, *[duration_table.get((name, sample_size), "") for sample_size in sample_sizes], sep="\t")
+            print(
+                name,
+                *[
+                    duration_table.get((name, sample_size), "")
+                    for sample_size in sample_sizes
+                ],
+                sep="\t"
+            )
 
     if output_type == "k":
         for name in names:
-            print(name, *[k_table.get((name, sample_size), "") for sample_size in sample_sizes], sep="\t")
+            print(
+                name,
+                *[k_table.get((name, sample_size), "") for sample_size in sample_sizes],
+                sep="\t"
+            )
 
     if output_type == "h":
         for name in names:
-            print(name, *[h_table.get((name, sample_size), "") for sample_size in sample_sizes], sep="\t")
+            print(
+                name,
+                *[h_table.get((name, sample_size), "") for sample_size in sample_sizes],
+                sep="\t"
+            )
 
 
 def load_results(results_dir):
@@ -473,7 +565,9 @@ def get_log_messages(results_dir, config, p_id=None, samples=None):
     problem_id = config[id_key] if p_id is None else p_id
     sample_size = config[sample_key] if samples is None else samples
     seed, k, h = (config[v] for v in ["seed", "k", "h"])
-    log_file = "{}_{}_{}_{}_{}.learning_log.txt".format(problem_id, sample_size, seed, k, h)
+    log_file = "{}_{}_{}_{}_{}.learning_log.txt".format(
+        problem_id, sample_size, seed, k, h
+    )
     log_file_full = os.path.join(results_dir, log_file)
     flats = []
     with open(log_file_full, "r") as f:
@@ -491,7 +585,9 @@ def get_all_log_messages(results_dir, config, p_id=None, samples=None):
 
     messages = dict()
     for filename in os.listdir(results_dir):
-        pattern = r"{}_{}_{}_(\d+)_(\d+).learning_log.txt".format(problem_id, sample_size, seed)
+        pattern = r"{}_{}_{}_(\d+)_(\d+).learning_log.txt".format(
+            problem_id, sample_size, seed
+        )
         match = re.match(pattern, filename)
         if match and (int(match.group(1)) <= k or int(match.group(2)) <= h):
             log_file_full = os.path.join(results_dir, filename)
@@ -522,7 +618,8 @@ class TableMaker(object):
             "name": self.extract_benchmark_name,
             "time": self.extract_time,
             "full_time": self.extract_full_time,
-            "time_ratio": lambda r, d, c: self.extract_time(r, d, c) / self.extract_full_time(r, d, c),
+            "time_ratio": lambda r, d, c: self.extract_time(r, d, c)
+            / self.extract_full_time(r, d, c),
             "k": lambda r, d, c: int(c[extraction_type]),
             "h": lambda r, d, c: int(c[extraction_type]),
             "synth_k": self.extract_synth_k,
@@ -596,7 +693,9 @@ class TableMaker(object):
             durations = []
             for message in get_log_messages(results_dir, config):
                 if message["type"] == "update":
-                    durations.append(message["selection_time"] + message["solving_time"])
+                    durations.append(
+                        message["selection_time"] + message["solving_time"]
+                    )
             return sum(durations)
         else:
             return None  # "({})".format(config["time_limit"])
@@ -608,25 +707,39 @@ class TableMaker(object):
             for key, messages in get_all_log_messages(results_dir, config).items():
                 for message in messages:
                     if message["type"] == "update":
-                        durations.append(message["selection_time"] + message["solving_time"])
+                        durations.append(
+                            message["selection_time"] + message["solving_time"]
+                        )
             return sum(durations)
         else:
             return None  # "({})".format(config["time_limit"])
 
     def extract_literals(self, results_dir, data_dir, config):
-        with open(os.path.join(data_dir, "{}.txt".format(str(config["problem_id"])))) as f:
+        with open(
+            os.path.join(data_dir, "{}.txt".format(str(config["problem_id"])))
+        ) as f:
             s_problem = generator.import_synthetic_data(json.load(f))
         return s_problem.synthetic_problem.literals
 
     def extract_synth_k(self, results_dir, data_dir, config):
-        with open(os.path.join(data_dir, "{}.txt".format(str(config["problem_id"])))) as f:
+        with open(
+            os.path.join(data_dir, "{}.txt".format(str(config["problem_id"])))
+        ) as f:
             s_problem = generator.import_synthetic_data(json.load(f))
-        return (s_problem.synthetic_problem.k - self.extract("k", results_dir, data_dir, config)) / s_problem.synthetic_problem.k
+        return (
+            s_problem.synthetic_problem.k
+            - self.extract("k", results_dir, data_dir, config)
+        ) / s_problem.synthetic_problem.k
 
     def extract_synth_h(self, results_dir, data_dir, config):
-        with open(os.path.join(data_dir, "{}.txt".format(str(config["problem_id"])))) as f:
+        with open(
+            os.path.join(data_dir, "{}.txt".format(str(config["problem_id"])))
+        ) as f:
             s_problem = generator.import_synthetic_data(json.load(f))
-        return (s_problem.synthetic_problem.h - self.extract("h", results_dir, data_dir, config)) / s_problem.synthetic_problem.h
+        return (
+            s_problem.synthetic_problem.h
+            - self.extract("h", results_dir, data_dir, config)
+        ) / s_problem.synthetic_problem.h
 
     def extract_accuracy(self, results_dir, data_dir, config):
         timed_out = config.get("time_out", False)
@@ -643,7 +756,9 @@ class TableMaker(object):
             return None
 
     def extract_relative_accuracy(self, results_dir, data_dir, config):
-        return self.extract_accuracy(results_dir, data_dir, config) - self.extract_ratio(results_dir, data_dir, config)
+        return self.extract_accuracy(
+            results_dir, data_dir, config
+        ) - self.extract_ratio(results_dir, data_dir, config)
 
     def extract_ratio(self, results_dir, data_dir, config):
         return config["approx_ratio"]["1000"][0]["ratio"]
@@ -665,7 +780,9 @@ class TableMaker(object):
     def extract_active_ratio(self, results_dir, data_dir, config):
         timed_out = config.get("time_out", False)
         if not timed_out:
-            return self.extract_active_set(results_dir, data_dir, config) / int(config["sample_size"])
+            return self.extract_active_set(results_dir, data_dir, config) / int(
+                config["sample_size"]
+            )
         else:
             return None  # "({})".format(config["time_limit"])
 
@@ -703,9 +820,13 @@ class TableMaker(object):
         unique_row_keys = unique_row_keys | set(self.row_keys)
         unique_col_keys = unique_col_keys | set(self.col_keys)
         row_key_is_int = all(isinstance(k, (int, long)) for k in unique_row_keys)
-        self.row_keys = list(sorted(unique_row_keys, key=(int if row_key_is_int else str)))
+        self.row_keys = list(
+            sorted(unique_row_keys, key=(int if row_key_is_int else str))
+        )
         col_key_is_int = all(isinstance(k, (int, long)) for k in unique_col_keys)
-        self.col_keys = list(sorted(unique_col_keys, key=(int if col_key_is_int else str)))
+        self.col_keys = list(
+            sorted(unique_col_keys, key=(int if col_key_is_int else str))
+        )
 
         self.tables.append(table)
 
@@ -730,15 +851,39 @@ class TableMaker(object):
         lines = [self.delimiter.join([""] + [str(k) for k in self.col_keys])]
         if aggregate:
             name = "Average " + self.get_name(self.value_type)
-            averages = [numpy.nanmean(numpy.array([get_val((rk, ck)) for rk in self.row_keys])) for ck in self.col_keys]
-            deviation = [numpy.nanstd(numpy.array([get_val((rk, ck)) for rk in self.row_keys])) for ck in self.col_keys]
-            lines.append(self.delimiter.join([str(name)] + ["{} +/- {}".format(a, d) for a, d in zip(averages, deviation)]))
+            averages = [
+                numpy.nanmean(numpy.array([get_val((rk, ck)) for rk in self.row_keys]))
+                for ck in self.col_keys
+            ]
+            deviation = [
+                numpy.nanstd(numpy.array([get_val((rk, ck)) for rk in self.row_keys]))
+                for ck in self.col_keys
+            ]
+            lines.append(
+                self.delimiter.join(
+                    [str(name)]
+                    + ["{} +/- {}".format(a, d) for a, d in zip(averages, deviation)]
+                )
+            )
         else:
             for rk in self.row_keys:
-                lines.append(self.delimiter.join([str(rk)] + [str(get_val((rk, ck))) for ck in self.col_keys]))
+                lines.append(
+                    self.delimiter.join(
+                        [str(rk)] + [str(get_val((rk, ck))) for ck in self.col_keys]
+                    )
+                )
         return "\n".join(lines)
 
-    def plot_table(self, filename=None, index=None, y_min=None, y_max=None, x_min=None, x_max=None, legend_pos=None):
+    def plot_table(
+        self,
+        filename=None,
+        index=None,
+        y_min=None,
+        y_max=None,
+        x_min=None,
+        x_max=None,
+        legend_pos=None,
+    ):
         import rendering
         import numpy
 
@@ -746,7 +891,9 @@ class TableMaker(object):
             if _key not in _table:
                 return numpy.nan
             else:
-                return numpy.nanmean([v if v is not None else numpy.nan for v in _table[_key]])
+                return numpy.nanmean(
+                    [v if v is not None else numpy.nan for v in _table[_key]]
+                )
 
         scatter = rendering.ScatterData("", numpy.array(self.col_keys))
         y_lim = self.get_lim(self.value_type)
@@ -763,7 +910,10 @@ class TableMaker(object):
         scatter.y_lim(y_lim)
         scatter.x_lim(x_lim)
         series = [
-            [numpy.array([get_val(table, (rk, ck)) for ck in self.col_keys]) for rk in self.row_keys]
+            [
+                numpy.array([get_val(table, (rk, ck)) for ck in self.col_keys])
+                for rk in self.row_keys
+            ]
             for table in self.tables
         ]
         if index is None:
@@ -772,7 +922,11 @@ class TableMaker(object):
                 legend_name = "Average " + self.get_name(self.value_type)
                 if "name" in self.tables[i]:
                     legend_name += " " + self.tables[i]["name"]
-                scatter.add_data(legend_name, numpy.nanmean(series_array, 0), numpy.nanstd(numpy.array(series[i]), 0))
+                scatter.add_data(
+                    legend_name,
+                    numpy.nanmean(series_array, 0),
+                    numpy.nanstd(numpy.array(series[i]), 0),
+                )
             # std_dev_series =
         else:
             for i in range(len(self.row_keys)):
@@ -780,5 +934,14 @@ class TableMaker(object):
 
         label_y = self.get_name(self.value_type).capitalize()
         label_x = self.get_name(self.col_key_type).capitalize()
-        scatter.plot(filename=filename, size=(4, 2.8), lines=True, log_x=False, log_y=False, label_y=label_y, label_x=label_x,
-                     x_ticks=self.get_x_ticks(), legend_pos=legend_pos)
+        scatter.plot(
+            filename=filename,
+            size=(4, 2.8),
+            lines=True,
+            log_x=False,
+            log_y=False,
+            label_y=label_y,
+            label_x=label_x,
+            x_ticks=self.get_x_ticks(),
+            legend_pos=legend_pos,
+        )

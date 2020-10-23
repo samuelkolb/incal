@@ -10,8 +10,12 @@ import time
 
 from generator import import_synthetic_data_files
 from inc_logging import LoggingObserver
-from incremental_learner import AllViolationsStrategy, RandomViolationsStrategy, WeightedRandomViolationsStrategy, \
-    MaxViolationsStrategy
+from incremental_learner import (
+    AllViolationsStrategy,
+    RandomViolationsStrategy,
+    WeightedRandomViolationsStrategy,
+    MaxViolationsStrategy,
+)
 from k_cnf_smt_learner import KCnfSmtLearner
 from k_dnf_smt_learner import KDnfSmtLearner
 from parameter_free_learner import learn_bottom_up
@@ -35,7 +39,11 @@ class IncrementalConfig(object):
     def get_dt_weights(self):
         if self.dt_weights is None:
             import dt_selection
-            self.dt_weights = [min(d.values()) for d in dt_selection.get_distances(self.domain, self.data)]
+
+            self.dt_weights = [
+                min(d.values())
+                for d in dt_selection.get_distances(self.domain, self.data)
+            ]
         return self.dt_weights
 
     def get_initial_indices(self):
@@ -45,7 +53,10 @@ class IncrementalConfig(object):
             return random.sample(range(len(self.data)), self.initial_size)
         elif self.initial == "dt_weighted":
             import sampling
-            return sampling.sample_weighted(zip(range(len(self.data)), self.get_dt_weights()), self.initial_size)
+
+            return sampling.sample_weighted(
+                zip(range(len(self.data)), self.get_dt_weights()), self.initial_size
+            )
         else:
             raise RuntimeError("Unknown initial type {}".format(self.initial))
 
@@ -55,15 +66,26 @@ class IncrementalConfig(object):
         elif self.selection == "random":
             return RandomViolationsStrategy(self.selection_size)
         elif self.selection == "dt_weighted":
-            return WeightedRandomViolationsStrategy(self.selection_size, self.get_dt_weights())
+            return WeightedRandomViolationsStrategy(
+                self.selection_size, self.get_dt_weights()
+            )
         elif self.selection == "dt":
             return MaxViolationsStrategy(self.selection_size, self.get_dt_weights())
         else:
             raise RuntimeError("Unknown selection type {}".format(self.selection))
 
 
-def learn_synthetic(input_dir, prefix, results_dir, bias, incremental_config, plot=None, sample_count=None,
-                    time_out=None, parameter_free=False):
+def learn_synthetic(
+    input_dir,
+    prefix,
+    results_dir,
+    bias,
+    incremental_config,
+    plot=None,
+    sample_count=None,
+    time_out=None,
+    parameter_free=False,
+):
 
     input_dir = os.path.abspath(input_dir)
     data_sets = list(import_synthetic_data_files(input_dir, prefix))
@@ -112,19 +134,39 @@ def learn_synthetic(input_dir, prefix, results_dir, bias, incremental_config, pl
                 elif bias == "dnf":
                     learner = KDnfSmtLearner(k, h, selection_strategy)
 
-                if plot is not None and plot and synthetic_problem.bool_count == 0 and synthetic_problem.real_count == 2:
+                if (
+                    plot is not None
+                    and plot
+                    and synthetic_problem.bool_count == 0
+                    and synthetic_problem.real_count == 2
+                ):
                     import plotting
+
                     feats = domain.real_vars
                     plots_dir = os.path.join(results_dir, name)
                     exp_id = "{}_{}_{}".format(learner.name, sample_count, seed)
-                    learner.add_observer(plotting.PlottingObserver(data, plots_dir, exp_id, *feats))
-                log_file = "{}_{}_{}_{}_{}.learning_log.txt".format(name, sample_count, seed, k, h)
-                learner.add_observer(LoggingObserver(os.path.join(results_dir, log_file), seed, True, selection_strategy))
+                    learner.add_observer(
+                        plotting.PlottingObserver(data, plots_dir, exp_id, *feats)
+                    )
+                log_file = "{}_{}_{}_{}_{}.learning_log.txt".format(
+                    name, sample_count, seed, k, h
+                )
+                learner.add_observer(
+                    LoggingObserver(
+                        os.path.join(results_dir, log_file),
+                        seed,
+                        True,
+                        selection_strategy,
+                    )
+                )
             else:
                 raise RuntimeError("Unknown bias {}".format(bias))
 
-            result = timeout(learner.learn, [domain, data, initial_indices], duration=time_out)
+            result = timeout(
+                learner.learn, [domain, data, initial_indices], duration=time_out
+            )
         else:
+
             def learn_f(_data, _k, _h):
                 selection_strategy = incremental_config.get_selection_strategy()
                 if bias == "cnf":
@@ -132,15 +174,36 @@ def learn_synthetic(input_dir, prefix, results_dir, bias, incremental_config, pl
                 elif bias == "dnf":
                     learner = KDnfSmtLearner(_k, _h, selection_strategy)
                 initial_indices = incremental_config.get_initial_indices()
-                log_file = "{}_{}_{}_{}_{}.learning_log.txt".format(name, sample_count, seed, _k, _h)
-                learner.add_observer(LoggingObserver(os.path.join(results_dir, log_file), seed, True, selection_strategy))
+                log_file = "{}_{}_{}_{}_{}.learning_log.txt".format(
+                    name, sample_count, seed, _k, _h
+                )
+                learner.add_observer(
+                    LoggingObserver(
+                        os.path.join(results_dir, log_file),
+                        seed,
+                        True,
+                        selection_strategy,
+                    )
+                )
                 return learner.learn(domain, data, initial_indices)
 
             result, k, h = learn_bottom_up(data, learn_f, 3, 1)
         if result is None:
-            flat[name][sample_count] = {"k": k, "h": h, "seed": seed, "bias": bias, "time_out": True}
+            flat[name][sample_count] = {
+                "k": k,
+                "h": h,
+                "seed": seed,
+                "bias": bias,
+                "time_out": True,
+            }
         else:
-            flat[name][sample_count] = {"k": k, "h": h, "seed": seed, "bias": bias, "time_out": False}
+            flat[name][sample_count] = {
+                "k": k,
+                "h": h,
+                "seed": seed,
+                "bias": bias,
+                "time_out": False,
+            }
         if time_out is not None:
             flat[name][sample_count]["time_limit"] = time_out
 
@@ -168,7 +231,18 @@ if __name__ == "__main__":
     if parsed.non_incremental:
         inc_config = IncrementalConfig(None, None, None, None)
     else:
-        inc_config = IncrementalConfig(parsed.initial, parsed.initial_size, parsed.selection, parsed.selection_size)
+        inc_config = IncrementalConfig(
+            parsed.initial, parsed.initial_size, parsed.selection, parsed.selection_size
+        )
 
-    learn_synthetic(parsed.input_dir, parsed.prefix, parsed.output_dir, parsed.bias, inc_config,
-                    parsed.plot, parsed.samples, parsed.time_out, parsed.parameter_free)
+    learn_synthetic(
+        parsed.input_dir,
+        parsed.prefix,
+        parsed.output_dir,
+        parsed.bias,
+        inc_config,
+        parsed.plot,
+        parsed.samples,
+        parsed.time_out,
+        parsed.parameter_free,
+    )

@@ -16,8 +16,9 @@ class Learner(object):
     def __init__(self, name):
         self.name = name
 
-    def learn(self, domain: Domain, data: np.ndarray, labels: np.ndarray, border_indices)\
-            -> Tuple[np.ndarray, np.ndarray, FNode]:
+    def learn(
+        self, domain: Domain, data: np.ndarray, labels: np.ndarray, border_indices
+    ) -> Tuple[np.ndarray, np.ndarray, FNode]:
         raise NotImplementedError()
 
     @staticmethod
@@ -37,7 +38,9 @@ class Learner(object):
         x_vars = [domain.get_symbol(var) for var in domain.real_vars]
         b_vars = [domain.get_symbol(var) for var in domain.bool_vars]
 
-        formula = smt.Or([smt.And(hyperplane_conjunct) for hyperplane_conjunct in dnf_list])
+        formula = smt.Or(
+            [smt.And(hyperplane_conjunct) for hyperplane_conjunct in dnf_list]
+        )
         substitution = {var: example_features[str(var)] for var in x_vars + b_vars}
         return formula.substitute(substitution).simplify().is_true()
 

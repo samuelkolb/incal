@@ -12,7 +12,10 @@ def table(data, column_header=None, row_header=None):
     # type: (Union[List[List[Any]], np.ndarray], Optional[List[Any]], Optional[List[Any]]) -> str
 
     if isinstance(data, np.ndarray):
-        data = [[data[row, col] for col in range(data.shape[1])] for row in range(data.shape[0])]
+        data = [
+            [data[row, col] for col in range(data.shape[1])]
+            for row in range(data.shape[0])
+        ]
 
     if row_header is not None:
         if not isinstance(row_header[0], (list, tuple)):
@@ -28,15 +31,22 @@ def table(data, column_header=None, row_header=None):
         column_header = ["{}".format(e) for e in column_header]
     data = [["{}".format(e) for e in row] for row in data]
 
-    max_lengths = [max(len(data[r][c]) for r in range(len(data))) for c in range(len(data[0]))]
+    max_lengths = [
+        max(len(data[r][c]) for r in range(len(data))) for c in range(len(data[0]))
+    ]
     if column_header is not None:
-        max_lengths = [max(max_lengths[c], len(column_header[c])) for c in range(len(data[0]))]
+        max_lengths = [
+            max(max_lengths[c], len(column_header[c])) for c in range(len(data[0]))
+        ]
 
     if column_header is not None:
         data.insert(0, column_header)
         data.insert(1, ["=" * max_lengths[i] for i, c in enumerate(column_header)])
 
-    data = [[row[c] + " " * (max_lengths[c] - len(row[c])) for c in range(len(data[0]))] for row in data]
+    data = [
+        [row[c] + " " * (max_lengths[c] - len(row[c])) for c in range(len(data[0]))]
+        for row in data
+    ]
 
     return "\n".join("  ".join(e for e in row) for row in data)
 
@@ -57,15 +67,29 @@ def mean(iterable):
 
 
 def mean_scores(scores):
-    return [mean([scores[r][c] for r in range(len(scores))]) for c in range(len(scores[0]))]
+    return [
+        mean([scores[r][c] for r in range(len(scores))]) for c in range(len(scores[0]))
+    ]
 
 
 def std_scores(scores):
-    return [np.std(np.array([scores[r][c] for r in range(len(scores))])) for c in range(len(scores[0]))]
+    return [
+        np.std(np.array([scores[r][c] for r in range(len(scores))]))
+        for c in range(len(scores[0]))
+    ]
 
 
 def parse_args(args):
-    return args.targets, args.group_by, args.aggregator, args.sort, args.exclude, args.plot, args.options, args.write_to
+    return (
+        args.targets,
+        args.group_by,
+        args.aggregator,
+        args.sort,
+        args.exclude,
+        args.plot,
+        args.options,
+        args.write_to,
+    )
 
 
 def show_from_args(experiments, args):
@@ -89,7 +113,10 @@ def get_property(index, experiment, property_name):
             return min(get_property(index, experiment, remaining))
         if operator.startswith("batch"):
             bin_size = float(operator[5:])
-            return int(get_property(index, experiment, remaining) / bin_size) * bin_size - bin_size / 2
+            return (
+                int(get_property(index, experiment, remaining) / bin_size) * bin_size
+                - bin_size / 2
+            )
         else:
             try:
                 index = int(operator)
@@ -114,16 +141,25 @@ def get_property(index, experiment, property_name):
         dissolve_object = False
 
     if property_name in experiment.parameters.options:
-        return getattr(experiment.parameters, property_name)\
-            if dissolve_object else experiment.parameters.original_values[property_name]
+        return (
+            getattr(experiment.parameters, property_name)
+            if dissolve_object
+            else experiment.parameters.original_values[property_name]
+        )
 
     if property_name in experiment.results.options:
-        return getattr(experiment.results, property_name)\
-            if dissolve_object else experiment.results.original_values[property_name]
+        return (
+            getattr(experiment.results, property_name)
+            if dissolve_object
+            else experiment.results.original_values[property_name]
+        )
 
     if experiment.config and property_name in experiment.config.options:
-        return getattr(experiment.config, property_name)\
-            if dissolve_object else experiment.config.original_values[property_name]
+        return (
+            getattr(experiment.config, property_name)
+            if dissolve_object
+            else experiment.config.original_values[property_name]
+        )
 
     if property_name in experiment.derived:
         return experiment.derived[property_name](experiment)
@@ -133,13 +169,18 @@ def get_property(index, experiment, property_name):
     except ValueError:
         pass
 
-    properties = ["id", "*"] \
-                 + sorted(experiment.parameters.options.keys()) \
-                 + sorted(experiment.results.options.keys()) \
-                 + (sorted(experiment.config.options.keys()) if experiment.config else [])
+    properties = (
+        ["id", "*"]
+        + sorted(experiment.parameters.options.keys())
+        + sorted(experiment.results.options.keys())
+        + (sorted(experiment.config.options.keys()) if experiment.config else [])
+    )
 
-    raise ValueError("Could not find property: {}, choose a valid property ({}) or a filter"
-                     .format(property_name, properties))
+    raise ValueError(
+        "Could not find property: {}, choose a valid property ({}) or a filter".format(
+            property_name, properties
+        )
+    )
 
 
 def is_excluded_from_string(filter_string, experiment):
@@ -189,15 +230,15 @@ def is_excluded(experiment: Experiment, exclude: Optional[List]):
 
 
 def show(
-        experiments: List[Experiment],
-        targets=None,
-        group_by=None,
-        aggregator=None,
-        sort: Optional[str] = None,
-        exclude: Optional[List] = None,
-        plot=None,
-        options=None,
-        export_filename=None,
+    experiments: List[Experiment],
+    targets=None,
+    group_by=None,
+    aggregator=None,
+    sort: Optional[str] = None,
+    exclude: Optional[List] = None,
+    plot=None,
+    options=None,
+    export_filename=None,
 ):
     # Setup aggregator
     if aggregator == "count":
@@ -210,7 +251,9 @@ def show(
     experiments = [e for e in experiments if not is_excluded(e, exclude)]
 
     if plot and len(targets) != 1:
-        raise ValueError("Plotting requires exactly one target, {} given".format(len(targets)))
+        raise ValueError(
+            "Plotting requires exactly one target, {} given".format(len(targets))
+        )
 
     group_by = group_by or (["id"] if plot else ["*"])
 
@@ -227,9 +270,12 @@ def show(
             reverse = False
 
         experiments = [
-            t[1] for t in sorted(zip(range(len(experiments)), experiments),
-                                 key=lambda t: get_property(t[0], t[1], sort),
-                                 reverse=reverse)
+            t[1]
+            for t in sorted(
+                zip(range(len(experiments)), experiments),
+                key=lambda t: get_property(t[0], t[1], sort),
+                reverse=reverse,
+            )
         ]
 
     groups = {}
@@ -240,7 +286,9 @@ def show(
         groups[key].append(tuple([get_property(i, experiment, t) for t in targets]))
 
     keys = sorted(groups.keys())
-    key_names = [["{}:{}".format(g, v) for g, v in zip(group_by, values)] for values in keys]
+    key_names = [
+        ["{}:{}".format(g, v) for g, v in zip(group_by, values)] for values in keys
+    ]
 
     if plot:
         scatter = ScatterData("", options)
@@ -252,18 +300,34 @@ def show(
                     sub_group[r[0]] = []
                 sub_group[r[0]].append(r[1])
             sub_keys = sorted(sub_group.keys())
-            scatter.add_data(name, np.array(sub_keys), np.array([aggregator(sub_group[sk]) for sk in sub_keys]),
-                             np.array([np.std(np.array(sub_group[sk])) for sk in sub_keys]))
+            scatter.add_data(
+                name,
+                np.array(sub_keys),
+                np.array([aggregator(sub_group[sk]) for sk in sub_keys]),
+                np.array([np.std(np.array(sub_group[sk])) for sk in sub_keys]),
+            )
 
         label_x = targets[0].capitalize()
         label_y = targets[1].capitalize()
-        scatter.plot(export_filename,
-                     lines=True, log_x=False, log_y=False, label_y=label_y, label_x=label_x, legend_pos="upper center")
+        scatter.plot(
+            export_filename,
+            lines=True,
+            log_x=False,
+            log_y=False,
+            label_y=label_y,
+            label_x=label_x,
+            legend_pos="upper center",
+        )
 
     else:
         result_table = [
-            ["{:.4f} (+/- {:.4f})".format(aggregator([r[i] for r in groups[k]]),
-                                          np.std(np.array([r[i] for r in groups[k]])))
-             for i, t in enumerate(targets)] for k in keys
+            [
+                "{:.4f} (+/- {:.4f})".format(
+                    aggregator([r[i] for r in groups[k]]),
+                    np.std(np.array([r[i] for r in groups[k]])),
+                )
+                for i, t in enumerate(targets)
+            ]
+            for k in keys
         ]
         print(table(result_table, targets, list(zip(*key_names))))

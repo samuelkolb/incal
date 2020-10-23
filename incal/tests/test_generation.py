@@ -7,7 +7,9 @@ from pywmi import Domain
 
 
 def get_xay_domain():
-    return Domain(["x", "a", "y"], {"x": REAL, "a": BOOL, "y": REAL}, {"x": (0, 1), "y": (0, 1)})
+    return Domain(
+        ["x", "a", "y"], {"x": REAL, "a": BOOL, "y": REAL}, {"x": (0, 1), "y": (0, 1)}
+    )
 
 
 def test_generate_hyperplane():

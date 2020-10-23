@@ -15,15 +15,9 @@ def lp_2_6() -> Model:
     return Model(
         domain,
         300 * x1 + 200 * x2,
-        [
-            2 * x1 + x2 <= 100,
-            x1 + x2 <= 80,
-            x1 <= 40,
-            x1 >= 0,
-            x2 >= 0
-        ],
+        [2 * x1 + x2 <= 100, x1 + x2 <= 80, x1 <= 40, x1 >= 0, x2 >= 0],
         minimize=False,
-        name="LP_2_6"
+        name="LP_2_6",
     )
 
 
@@ -38,9 +32,10 @@ def lp_2_7() -> Model:
             0.03 * x1 + 0.02 * x2 + 0.05 * x3 + 0.06 * x4 <= 3,
             0.08 * x1 + 0.03 * x2 + 0.02 * x3 + 0.01 * x4 == 4,
             x1 + x2 + x3 + x4 == 110,
-        ] + [x >= 0 for x in domain.get_symbols(domain.variables)],
+        ]
+        + [x >= 0 for x in domain.get_symbols(domain.variables)],
         minimize=False,
-        name="LP_2_7"
+        name="LP_2_7",
     )
 
 
@@ -54,9 +49,10 @@ def lp_2_8() -> Model:
             2 * x1 + 3 * x2 + x3 <= 5,
             4 * x1 + x2 + 2 * x3 <= 11,
             3 * x1 + 4 * x2 + 2 * x3 <= 5,
-        ] + [x >= 0 for x in domain.get_symbols(domain.variables)],
+        ]
+        + [x >= 0 for x in domain.get_symbols(domain.variables)],
         minimize=False,
-        name="LP_2_8"
+        name="LP_2_8",
     )
 
 
@@ -74,7 +70,5 @@ def lp_2_9() -> Model:
             x3 >= 0,
         ],
         minimize=True,
-        name="LP_2_9"
+        name="LP_2_9",
     )
-
-

@@ -17,7 +17,14 @@ if TYPE_CHECKING:
 
 
 class OneClassStrategy(SelectionStrategy):
-    def __init__(self, regular_strategy, thresholds, tight_mode=True, class_label=True, background_knowledge=None):
+    def __init__(
+        self,
+        regular_strategy,
+        thresholds,
+        tight_mode=True,
+        class_label=True,
+        background_knowledge=None,
+    ):
         self.regular_strategy = regular_strategy  # type: SelectionStrategy
         self.thresholds = thresholds
         self.tight_mode = tight_mode
@@ -27,7 +34,9 @@ class OneClassStrategy(SelectionStrategy):
         if background_knowledge is None:
             self.background_knowledge = self.environment.formula_manager.TRUE()
         else:
-            self.background_knowledge = self.environment.formula_manager.normalize(background_knowledge)
+            self.background_knowledge = self.environment.formula_manager.normalize(
+                background_knowledge
+            )
 
     def find_violating(self, domain, data, labels, formula):
         fm = self.environment.formula_manager
@@ -54,29 +63,64 @@ class OneClassStrategy(SelectionStrategy):
                     row = {v: data[i, j].item() for j, v in enumerate(domain.variables)}
                     label = labels[i] == 1
                     if label == self.class_label:
-                        constraint = fm.Implies(fm.And(
-                            *[fm.Iff(bool_symbols[bool_var], fm.Bool(row[bool_var] == 1)) for bool_var in domain.bool_vars]),
-                            fm.Or(*[fm.Ite(real_symbols[real_var] >= fm.Real(row[real_var]),
-                                           real_symbols[real_var] - fm.Real(row[real_var]) >= fm.Real(
-                                               self.thresholds[real_var]),
-                                           fm.Real(row[real_var]) - real_symbols[real_var] >= fm.Real(
-                                               self.thresholds[real_var])) for real_var in
-                                    domain.real_vars]))
+                        constraint = fm.Implies(
+                            fm.And(
+                                *[
+                                    fm.Iff(
+                                        bool_symbols[bool_var],
+                                        fm.Bool(row[bool_var] == 1),
+                                    )
+                                    for bool_var in domain.bool_vars
+                                ]
+                            ),
+                            fm.Or(
+                                *[
+                                    fm.Ite(
+                                        real_symbols[real_var]
+                                        >= fm.Real(row[real_var]),
+                                        real_symbols[real_var] - fm.Real(row[real_var])
+                                        >= fm.Real(self.thresholds[real_var]),
+                                        fm.Real(row[real_var]) - real_symbols[real_var]
+                                        >= fm.Real(self.thresholds[real_var]),
+                                    )
+                                    for real_var in domain.real_vars
+                                ]
+                            ),
+                        )
                     elif label == (not self.class_label):
-                        constraint = fm.Implies(fm.And(
-                            *[fm.Iff(bool_symbols[bool_var], fm.Bool(row[bool_var] == 1)) for bool_var in domain.bool_vars]),
-                            fm.Or(*[fm.Ite(real_symbols[real_var] >= fm.Real(row[real_var]),
-                                           real_symbols[real_var] - fm.Real(row[real_var]) >= fm.Real(
-                                               self.thresholds[real_var]),
-                                           fm.Real(row[real_var]) - real_symbols[real_var] >= fm.Real(
-                                               self.thresholds[real_var])) for real_var in
-                                    domain.real_vars]))
+                        constraint = fm.Implies(
+                            fm.And(
+                                *[
+                                    fm.Iff(
+                                        bool_symbols[bool_var],
+                                        fm.Bool(row[bool_var] == 1),
+                                    )
+                                    for bool_var in domain.bool_vars
+                                ]
+                            ),
+                            fm.Or(
+                                *[
+                                    fm.Ite(
+                                        real_symbols[real_var]
+                                        >= fm.Real(row[real_var]),
+                                        real_symbols[real_var] - fm.Real(row[real_var])
+                                        >= fm.Real(self.thresholds[real_var]),
+                                        fm.Real(row[real_var]) - real_symbols[real_var]
+                                        >= fm.Real(self.thresholds[real_var]),
+                                    )
+                                    for real_var in domain.real_vars
+                                ]
+                            ),
+                        )
                     else:
                         raise ValueError("Unknown label l_{} = {}".format(i, label))
                     solver.add_assertion(constraint)
                 solver.solve()
                 model = solver.get_model()
-                example = [float(model.get_value(symbols[var]).constant_value()) for var in domain.variables]
+                example = [
+                    float(model.get_value(symbols[var]).constant_value())
+                    for var in domain.variables
+                ]
         except InternalSolverError:
             return None
         except Exception as e:
@@ -88,7 +132,9 @@ class OneClassStrategy(SelectionStrategy):
         return example
 
     def select_active(self, domain, data, labels, formula, active_indices):
-        data, labels, selected = self.regular_strategy.select_active(domain, data, labels, formula, active_indices)
+        data, labels, selected = self.regular_strategy.select_active(
+            domain, data, labels, formula, active_indices
+        )
         if len(selected) > 0:
             return data, labels, selected
         else:
@@ -100,19 +146,31 @@ class OneClassStrategy(SelectionStrategy):
             return data, labels, [len(labels) - 1]
 
     @staticmethod
-    def add_negatives(domain, data, labels, thresholds, sample_count, background_knowledge=None, distance_measure=None):
+    def add_negatives(
+        domain,
+        data,
+        labels,
+        thresholds,
+        sample_count,
+        background_knowledge=None,
+        distance_measure=None,
+    ):
         # type: (Domain, np.ndarray, np.ndarray, Dict, int, FNode, Any) -> Tuple[np.ndarray, np.ndarray]
 
         new_data = uniform(domain, sample_count)
         background_knowledge = background_knowledge or TRUE()
         supported_indices = evaluate(domain, background_knowledge, new_data)
-        boolean_indices = [i for i, v in enumerate(domain.variables) if domain.is_bool(v)]
+        boolean_indices = [
+            i for i, v in enumerate(domain.variables) if domain.is_bool(v)
+        ]
         real_indices = [i for i, v in enumerate(domain.variables) if domain.is_real(v)]
         for j in range(new_data.shape[0]):
             valid_negative = True
             for i in range(data.shape[0]):
                 # noinspection PyTypeChecker
-                if labels[i] and all(data[i, boolean_indices] == new_data[j, boolean_indices]):
+                if labels[i] and all(
+                    data[i, boolean_indices] == new_data[j, boolean_indices]
+                ):
                     in_range = True
                     for ri, v in zip(real_indices, domain.real_vars):
                         if abs(data[i, ri] - new_data[j, ri]) > thresholds[v]:
@@ -123,7 +181,9 @@ class OneClassStrategy(SelectionStrategy):
                         break
             supported_indices[j] = supported_indices[j] and valid_negative
         new_data = new_data[supported_indices == 1, :]
-        return np.concatenate([data, new_data], axis=0), np.concatenate([labels, np.zeros(new_data.shape[0])])
+        return np.concatenate([data, new_data], axis=0), np.concatenate(
+            [labels, np.zeros(new_data.shape[0])]
+        )
 
 
 """

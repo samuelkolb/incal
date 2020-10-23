@@ -14,7 +14,9 @@ class DecisionTreeSelection(MaxViolationsStrategy):
 
     def select_active(self, domain, data, labels, formula, active_indices):
         if self.weights is None:
-            self.weights = [min(d.values()) for d in get_distances(domain, data, labels)]
+            self.weights = [
+                min(d.values()) for d in get_distances(domain, data, labels)
+            ]
         return super().select_active(domain, data, labels, formula, active_indices)
 
 
@@ -42,6 +44,7 @@ def learn_dt(feature_matrix, labels, **kwargs):
 
 def export_dt(dt):
     import graphviz
+
     dot_data = tree.export_graphviz(dt, out_file=None)
     graph = graphviz.Source(dot_data)
     graph.render("DT")
@@ -59,11 +62,18 @@ def get_distances_dt(dt, domain, feature_matrix):
 
     for sample_id in range(len(feature_matrix)):
         distance = dict()
-        node_index = node_indicator.indices[node_indicator.indptr[sample_id]: node_indicator.indptr[sample_id + 1]]
+        node_index = node_indicator.indices[
+            node_indicator.indptr[sample_id] : node_indicator.indptr[sample_id + 1]
+        ]
         for node_id in node_index:
             variable = domain.variables[feature[node_id]]
-            if leave_id[sample_id] != node_id and domain.var_types[variable] == smt.REAL:
-                new_distance = abs(feature_matrix[sample_id][feature[node_id]] - threshold[node_id])
+            if (
+                leave_id[sample_id] != node_id
+                and domain.var_types[variable] == smt.REAL
+            ):
+                new_distance = abs(
+                    feature_matrix[sample_id][feature[node_id]] - threshold[node_id]
+                )
                 if variable not in distance or new_distance < distance[variable]:
                     distance[variable] = new_distance
         distances.append(distance)
@@ -79,4 +89,3 @@ def get_distances(domain, data, labels):
 
 if __name__ == "__main__":
     pass
-

@@ -9,7 +9,17 @@ from pywmi.plot import plot_combined
 
 
 class PlottingObserver(IncrementalObserver):
-    def __init__(self, domain, directory, name, feat_x, feat_y, condition=None, auto_clean=False, run_name=None):
+    def __init__(
+        self,
+        domain,
+        directory,
+        name,
+        feat_x,
+        feat_y,
+        condition=None,
+        auto_clean=False,
+        run_name=None,
+    ):
         self.domain = domain
 
         if not os.path.exists(directory):
@@ -40,14 +50,40 @@ class PlottingObserver(IncrementalObserver):
 
     def observe_initial(self, data, labels, initial_indices):
         self.all_active = self.all_active.union(initial_indices)
-        name = "{}{}{}_{}".format(self.directory, os.path.sep, self.name, self.iteration)
-        plot_combined(self.feat_x, self.feat_y, self.domain, None, (data, labels), None, name, initial_indices, set(),
-                      self.condition)
+        name = "{}{}{}_{}".format(
+            self.directory, os.path.sep, self.name, self.iteration
+        )
+        plot_combined(
+            self.feat_x,
+            self.feat_y,
+            self.domain,
+            None,
+            (data, labels),
+            None,
+            name,
+            initial_indices,
+            set(),
+            self.condition,
+        )
 
-    def observe_iteration(self, data, labels, formula, new_active_indices, solving_time, selection_time):
+    def observe_iteration(
+        self, data, labels, formula, new_active_indices, solving_time, selection_time
+    ):
         self.iteration += 1
         learned_labels = evaluate(self.domain, formula, data)
-        name = "{}{}{}_{}".format(self.directory, os.path.sep, self.name, self.iteration)
-        plot_combined(self.feat_x, self.feat_y, self.domain, formula, (data, labels), learned_labels, name,
-                      self.all_active, new_active_indices, condition=self.condition)
+        name = "{}{}{}_{}".format(
+            self.directory, os.path.sep, self.name, self.iteration
+        )
+        plot_combined(
+            self.feat_x,
+            self.feat_y,
+            self.domain,
+            formula,
+            (data, labels),
+            learned_labels,
+            name,
+            self.all_active,
+            new_active_indices,
+            condition=self.condition,
+        )
         self.all_active = self.all_active.union(new_active_indices)

@@ -35,11 +35,22 @@ def main():
         learner = KCnfSmtLearner(_k, _h, strategy, "mvn")
         initial_indices = LearnOptions.initial_random(20)(list(range(len(_data))))
         # learner.add_observer(LoggingObserver(None, _k, _h, None, True))
-        learner.add_observer(PlottingObserver(domain, "test_output/checker", "run_{}_{}_{}".format(_i, _k, _h),
-                                              domain.real_vars[0], domain.real_vars[1], None, False))
+        learner.add_observer(
+            PlottingObserver(
+                domain,
+                "test_output/checker",
+                "run_{}_{}_{}".format(_i, _k, _h),
+                domain.real_vars[0],
+                domain.real_vars[1],
+                None,
+                False,
+            )
+        )
         return learner.learn(domain, _data, _labels, initial_indices)
 
-    (new_data, new_labels, formula), k, h = learn_bottom_up(data, labels, learn_inc, 1, 1, 1, 1, None, None)
+    (new_data, new_labels, formula), k, h = learn_bottom_up(
+        data, labels, learn_inc, 1, 1, 1, 1, None, None
+    )
     print("Learned CNF(k={}, h={}) formula {}".format(k, h, pretty_print(formula)))
     print("Data-set grew from {} to {} entries".format(len(labels), len(new_labels)))
 
@@ -55,15 +66,28 @@ def background_knowledge_example():
     labels = labels[labels == 1]
 
     def learn_inc(_data, _labels, _i, _k, _h):
-        strategy = OneClassStrategy(RandomViolationsStrategy(10), thresholds)  #, background_knowledge=(a | b) & (~a | ~b))
+        strategy = OneClassStrategy(
+            RandomViolationsStrategy(10), thresholds
+        )  # , background_knowledge=(a | b) & (~a | ~b))
         learner = KCnfSmtLearner(_k, _h, strategy, "mvn")
         initial_indices = LearnOptions.initial_random(20)(list(range(len(_data))))
         # learner.add_observer(LoggingObserver(None, _k, _h, None, True))
-        learner.add_observer(PlottingObserver(domain, "test_output/bg", "run_{}_{}_{}".format(_i, _k, _h),
-                                              domain.real_vars[0], domain.real_vars[1], None, False))
+        learner.add_observer(
+            PlottingObserver(
+                domain,
+                "test_output/bg",
+                "run_{}_{}_{}".format(_i, _k, _h),
+                domain.real_vars[0],
+                domain.real_vars[1],
+                None,
+                False,
+            )
+        )
         return learner.learn(domain, _data, _labels, initial_indices)
 
-    (new_data, new_labels, formula), k, h = learn_bottom_up(data, labels, learn_inc, 1, 1, 1, 1, None, None)
+    (new_data, new_labels, formula), k, h = learn_bottom_up(
+        data, labels, learn_inc, 1, 1, 1, 1, None, None
+    )
     print("Learned CNF(k={}, h={}) formula {}".format(k, h, pretty_print(formula)))
     print("Data-set grew from {} to {} entries".format(len(labels), len(new_labels)))
 
@@ -82,31 +106,54 @@ def negative_samples_example(background_knowledge):
 
     start_time = time.time()
 
-    data, labels = OneClassStrategy.add_negatives(domain, data, labels, thresholds, 100, background_knowledge)
+    data, labels = OneClassStrategy.add_negatives(
+        domain, data, labels, thresholds, 100, background_knowledge
+    )
     print("Created {} negative examples".format(len(labels) - original_sample_count))
 
-    directory = "test_output{}bg_sampled{}{}".format(os.path.sep, os.path.sep, time.strftime("%Y-%m-%d %Hh%Mm%Ss"))
+    directory = "test_output{}bg_sampled{}{}".format(
+        os.path.sep, os.path.sep, time.strftime("%Y-%m-%d %Hh%Mm%Ss")
+    )
 
     def learn_inc(_data, _labels, _i, _k, _h):
-        strategy = OneClassStrategy(RandomViolationsStrategy(10), thresholds, background_knowledge=background_knowledge)
+        strategy = OneClassStrategy(
+            RandomViolationsStrategy(10),
+            thresholds,
+            background_knowledge=background_knowledge,
+        )
         learner = KCnfSmtLearner(_k, _h, strategy, "mvn")
         initial_indices = LearnOptions.initial_random(20)(list(range(len(_data))))
-        learner.add_observer(PlottingObserver(domain, directory, "run_{}_{}_{}".format(_i, _k, _h),
-                                              domain.real_vars[0], domain.real_vars[1], None, False))
+        learner.add_observer(
+            PlottingObserver(
+                domain,
+                directory,
+                "run_{}_{}_{}".format(_i, _k, _h),
+                domain.real_vars[0],
+                domain.real_vars[1],
+                None,
+                False,
+            )
+        )
         return learner.learn(domain, _data, _labels, initial_indices)
 
-    (new_data, new_labels, learned_formula), k, h = learn_bottom_up(data, labels, learn_inc, 1, 1, 1, 1, None, None)
+    (new_data, new_labels, learned_formula), k, h = learn_bottom_up(
+        data, labels, learn_inc, 1, 1, 1, 1, None, None
+    )
     if background_knowledge:
         learned_formula = learned_formula & background_knowledge
 
     duration = time.time() - start_time
 
     print("{}".format(smt_to_nested(learned_formula)))
-    print("Learned CNF(k={}, h={}) formula {}".format(k, h, pretty_print(learned_formula)))
+    print(
+        "Learned CNF(k={}, h={}) formula {}".format(k, h, pretty_print(learned_formula))
+    )
     print("Data-set grew from {} to {} entries".format(len(labels), len(new_labels)))
     print("Learning took {:.2f}s".format(duration))
 
-    test_data, labels = OneClassStrategy.add_negatives(domain, data, labels, thresholds, 1000, background_knowledge)
+    test_data, labels = OneClassStrategy.add_negatives(
+        domain, data, labels, thresholds, 1000, background_knowledge
+    )
     assert all(evaluate(domain, learned_formula, test_data) == labels)
 
 
