@@ -29,8 +29,8 @@ def learn(
     selection_strategy: object,
     initial_k: int,
     initial_h: int,
-    weight_k: float,
-    weight_h: float,
+    weight_k: float = 1,
+    weight_h: float = 1,
     log: Optional[str] = None,
 ) -> Tuple[FNode, int, int]:
     """
