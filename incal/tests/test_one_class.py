@@ -5,18 +5,17 @@ import numpy as np
 
 from pywmi.smt_print import pretty_print
 
-from incal.learn import LearnOptions
 from pywmi import evaluate, Domain, smt_to_nested
 from pywmi.sample import uniform
 
-from examples import checker_problem
+from incal.example.examples import checker_problem
 from incal.violations.core import RandomViolationsStrategy
 
 from incal.violations.virtual_data import OneClassStrategy
 
 from incal.k_cnf_smt_learner import KCnfSmtLearner
 
-from incal.parameter_free_learner import learn_bottom_up
+from incal.parameter_free_learner import learn_bottom_up, DoubleSearchStrategy
 
 # from incal.observe.inc_logging import LoggingObserver
 from incal.observe.plotting import PlottingObserver
@@ -33,7 +32,7 @@ def main():
     def learn_inc(_data, _labels, _i, _k, _h):
         strategy = OneClassStrategy(RandomViolationsStrategy(10), thresholds)
         learner = KCnfSmtLearner(_k, _h, strategy, "mvn")
-        initial_indices = LearnOptions.initial_random(20)(list(range(len(_data))))
+        initial_indices = random.sample(list(range(len(_data))), 20)
         # learner.add_observer(LoggingObserver(None, _k, _h, None, True))
         learner.add_observer(
             PlottingObserver(
@@ -70,7 +69,7 @@ def background_knowledge_example():
             RandomViolationsStrategy(10), thresholds
         )  # , background_knowledge=(a | b) & (~a | ~b))
         learner = KCnfSmtLearner(_k, _h, strategy, "mvn")
-        initial_indices = LearnOptions.initial_random(20)(list(range(len(_data))))
+        initial_indices = random.sample(list(range(len(_data))), 20)
         # learner.add_observer(LoggingObserver(None, _k, _h, None, True))
         learner.add_observer(
             PlottingObserver(
@@ -122,7 +121,7 @@ def negative_samples_example(background_knowledge):
             background_knowledge=background_knowledge,
         )
         learner = KCnfSmtLearner(_k, _h, strategy, "mvn")
-        initial_indices = LearnOptions.initial_random(20)(list(range(len(_data))))
+        initial_indices = random.sample(list(range(len(_data))), 20)
         learner.add_observer(
             PlottingObserver(
                 domain,
@@ -137,7 +136,7 @@ def negative_samples_example(background_knowledge):
         return learner.learn(domain, _data, _labels, initial_indices)
 
     (new_data, new_labels, learned_formula), k, h = learn_bottom_up(
-        data, labels, learn_inc, 1, 1, 1, 1, None, None
+        data, labels, learn_inc, DoubleSearchStrategy(1, 1, 1, 1, None, None)
     )
     if background_knowledge:
         learned_formula = learned_formula & background_knowledge

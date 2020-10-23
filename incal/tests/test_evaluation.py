@@ -1,7 +1,8 @@
 import numpy as np
 
-from smtlearn.examples import ice_cream_problem
-from pywmi import Domain, evaluate
+from pywmi import evaluate
+
+from incal.example.examples import ice_cream_problem
 
 
 def test_example1():

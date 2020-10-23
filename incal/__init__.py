@@ -1,13 +1,22 @@
+import random
+
 from pysmt.shortcuts import Real
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable, List
 
 import numpy as np
 from pysmt.fnode import FNode
 from pywmi.domain import Density, Domain
 
+from incal.incremental_learner import IncrementalLearner
 from incal.observe.inc_logging import LoggingObserver
-from incal.parameter_free_learner import learn_bottom_up
+from incal.parameter_free_learner import (
+    learn_bottom_up,
+    SearchStrategy,
+    DoubleSearchStrategy,
+    LpSearchStrategy,
+)
+from incal.violations.core import SelectionStrategy, RandomViolationsStrategy
 
 
 class Formula(Density):
@@ -20,17 +29,17 @@ class Formula(Density):
         return cls(density.domain, density.support)
 
 
-def learn(
+Indices = List[int]
+
+
+def learn_incremental(
     domain: Domain,
     data: np.ndarray,
     labels: np.ndarray,
-    learner_factory: callable,
-    initial_strategy: callable,
-    selection_strategy: object,
-    initial_k: int,
-    initial_h: int,
-    weight_k: float = 1,
-    weight_h: float = 1,
+    learner_factory: Callable[[int, int, SelectionStrategy], IncrementalLearner],
+    initial_strategy: Callable[[Indices], Indices],
+    selection_strategy: SelectionStrategy,
+    search_strategy: SearchStrategy,
     log: Optional[str] = None,
 ) -> Tuple[FNode, int, int]:
     """
@@ -39,20 +48,53 @@ def learn(
     3. the number of hyperplanes used
     """
 
-    # log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo", "results")
-    # problem_name = hashlib.sha256(name).hexdigest()
-
     def learn_inc(_data, _labels, _i, _k, _h):
-        learner = learner_factory(_k, _h, selection_strategy)
+        iteration_learner = learner_factory(_k, _h, selection_strategy)
         initial_indices = initial_strategy(list(range(len(_data))))
         # log_file = os.path.join(log_dir, "{}_{}_{}.txt".format(problem_name, _k, _h))
         if log is not None:
-            learner.add_observer(
+            iteration_learner.add_observer(
                 LoggingObserver(log, _k, _h, None, False, selection_strategy)
             )
-        return learner.learn(domain, _data, _labels, initial_indices)
+        return iteration_learner.learn(domain, _data, _labels, initial_indices)
 
     ((_d, _l, formula), k, h) = learn_bottom_up(
-        data, labels, learn_inc, weight_k, weight_h, initial_k, initial_h, None, None
+        data, labels, learn_inc, search_strategy
     )
     return formula, k, h
+
+
+def incal(
+    domain: Domain,
+    data: np.ndarray,
+    labels: np.ndarray,
+):
+    from incal.k_cnf_smt_learner import KCnfSmtLearner
+
+    learn_incremental(
+        domain,
+        data,
+        labels,
+        lambda k, h, ss: KCnfSmtLearner(k, h, ss, ""),
+        lambda ind: random.sample(ind, 20),
+        RandomViolationsStrategy(10),
+        DoubleSearchStrategy(1.4, 1),
+    )
+
+
+def incalp(
+    domain: Domain,
+    data: np.ndarray,
+    labels: np.ndarray,
+):
+    from incal.lp_learner_milp import LpLearnerMilp
+
+    learn_incremental(
+        domain,
+        data,
+        labels,
+        lambda k, h, ss: LpLearnerMilp(k, h, ss),
+        lambda ind: random.sample(ind, 20),
+        RandomViolationsStrategy(10),
+        LpSearchStrategy(),
+    )
