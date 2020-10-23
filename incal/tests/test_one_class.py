@@ -9,7 +9,7 @@ from incal.learn import LearnOptions
 from pywmi import evaluate, Domain, smt_to_nested
 from pywmi.sample import uniform
 
-from incal.experiments.examples import simple_checker_problem, checker_problem
+from examples import checker_problem
 from incal.violations.core import RandomViolationsStrategy
 
 from incal.violations.virtual_data import OneClassStrategy

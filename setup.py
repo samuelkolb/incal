@@ -25,12 +25,10 @@ REQUIRED = [
     "pysmt",
     "matplotlib",
     "scikit-learn",
-    "pickledb",
-    "autodora",
 ]
 
 # What packages are optional?
-EXTRAS = {"sdd": ["pysdd"], "telegram": ["python-telegram-bot"]}
+EXTRAS = {}
 
 # Distribute: python setup.py upload
 # Requires: pip install twine wheel
