@@ -89,11 +89,11 @@ def incalp(
 ) -> Tuple[FNode, int]:
     from incal.lp_learner_milp import LpLearnerMilp
 
-    formula, k, j = learn_incremental(
+    formula, k, h = learn_incremental(
         domain,
         data,
         labels,
-        lambda k, h, ss: LpLearnerMilp(k, h, ss),
+        lambda _k, _h, ss: LpLearnerMilp(_h, ss),
         lambda ind: random.sample(ind, 20),
         RandomViolationsStrategy(10),
         LpSearchStrategy(),
