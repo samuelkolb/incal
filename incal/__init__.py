@@ -68,7 +68,7 @@ def incal(
     domain: Domain,
     data: np.ndarray,
     labels: np.ndarray,
-):
+) -> Tuple[FNode, int, int]:
     from incal.k_cnf_smt_learner import KCnfSmtLearner
 
     return learn_incremental(
@@ -86,10 +86,10 @@ def incalp(
     domain: Domain,
     data: np.ndarray,
     labels: np.ndarray,
-):
+) -> Tuple[FNode, int]:
     from incal.lp_learner_milp import LpLearnerMilp
 
-    return learn_incremental(
+    formula, k, j = learn_incremental(
         domain,
         data,
         labels,
@@ -98,3 +98,4 @@ def incalp(
         RandomViolationsStrategy(10),
         LpSearchStrategy(),
     )
+    return formula, k
