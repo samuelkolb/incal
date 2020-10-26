@@ -71,7 +71,7 @@ def incal(
 ):
     from incal.k_cnf_smt_learner import KCnfSmtLearner
 
-    learn_incremental(
+    return learn_incremental(
         domain,
         data,
         labels,
@@ -89,7 +89,7 @@ def incalp(
 ):
     from incal.lp_learner_milp import LpLearnerMilp
 
-    learn_incremental(
+    return learn_incremental(
         domain,
         data,
         labels,
