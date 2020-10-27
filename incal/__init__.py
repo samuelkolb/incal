@@ -76,7 +76,7 @@ def incal(
         data,
         labels,
         lambda k, h, ss: KCnfSmtLearner(k, h, ss, ""),
-        lambda ind: random.sample(ind, 20),
+        lambda ind: random.sample(ind, min(data.shape[0], 20)),
         RandomViolationsStrategy(10),
         DoubleSearchStrategy(1.4, 1),
     )
@@ -94,7 +94,7 @@ def incalp(
         data,
         labels,
         lambda _k, _h, ss: LpLearnerMilp(_h, ss),
-        lambda ind: random.sample(ind, 20),
+        lambda ind: random.sample(ind, min(data.shape[0], 20)),
         RandomViolationsStrategy(10),
         LpSearchStrategy(),
     )
