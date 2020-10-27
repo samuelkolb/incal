@@ -90,7 +90,11 @@ def learn_bottom_up(data, labels, learn_f, search_strategy: SearchStrategy):
     i = 0
     while solution is None:
         i += 1
-        k, h = frontier.pop()
+        try:
+            k, h = frontier.pop()
+        except IndexError:
+            return (data, labels, None), None, None
+
         logger.debug("Attempting to solve with k={} and h={}".format(k, h))
         start = time.time()
         try:

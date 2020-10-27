@@ -38,8 +38,8 @@ class LpLearnerMilp(IncrementalLearner):
         n_v = len(domain.real_vars)  # number of variables #j
         bigm = 10000000
         ep = 1
-        wmax = 1000
-        cmax = 1000
+        wmax = 10000
+        cmax = 10000
         # c_0 = 1
         # c_j = c_0 + (1 - c_0)  # add complexity here
 
@@ -89,9 +89,11 @@ class LpLearnerMilp(IncrementalLearner):
         ]
 
         # Example x constraint coverage
-        cov_k_i = [
+        excluded_k_i = [
             [
-                m.addVar(vtype=GRB.BINARY, name="cov_k_i({k},{i})".format(k=k, i=i))
+                m.addVar(
+                    vtype=GRB.BINARY, name="excluded_k_i({k},{i})".format(k=k, i=i)
+                )
                 for i in range(n_c)
             ]
             for k in range(example_count)
@@ -108,53 +110,53 @@ class LpLearnerMilp(IncrementalLearner):
         # 1 sum(wij*xkj<=ci) A positives
         for k in range(example_count):
             if y_k[k]:
-                for i in range(
-                    n_c
-                ):  # one per positive example and number of constraints
+                for i in range(n_c):
+                    # one per positive example and number of constraints
                     m.addConstr(
                         sum(a_i_j[i][j] * x_k_j[k][j] for j in range(n_v)) <= b_i[i],
                         name="c1({k},{i})".format(k=k, i=i),
                     )
+
         # 2 sum(wij*sjk>m*ski-M+ci+e) A negatives
         for k in range(example_count):
             if not y_k[k]:
-                for i in range(
-                    n_c
-                ):  # one per positive example and number of constraints
+                for i in range(n_c):
+                    # one per negative example and number of constraints
                     m.addConstr(
                         sum(a_i_j[i][j] * x_k_j[k][j] for j in range(n_v))
-                        >= bigm * cov_k_i[k][i] - bigm + b_i[i] + ep,
+                        >= b_i[i] + ep - bigm * (1 - excluded_k_i[k][i]),
                         name="c2({k},{i})".format(k=k, i=i),
                     )
+
         # 3 sum(ski>=1) A negatives
         for k in range(example_count):  # one per negative example
             if not y_k[k]:
                 m.addConstr(
-                    sum(cov_k_i[k][i] for i in range(n_c)) >= 1,
+                    sum(excluded_k_i[k][i] for i in range(n_c)) >= 1,
                     name="c3({k})".format(k=k),
                 )
 
-        # 5wij<=cmax*wbij
+        # 5 wij<=cmax*wbij
         for i in range(n_c):
             for j in range(n_v):
                 m.addConstr(
                     a_i_j[i][j] <= wmax * occ_i_j[i][j],
                     name="c5({i},{j})".format(i=i, j=j),
                 )
-        # 6wij>=-camxwbij
+        # 6 wij>=-camxwbij
         for i in range(n_c):
             for j in range(n_v):
                 m.addConstr(
                     a_i_j[i][j] >= -wmax * occ_i_j[i][j],
                     name="c6({i},{j})".format(i=i, j=j),
                 )
-        # 7ci<=cmaxcbi
+        # 7 ci<=cmaxcbi
         for i in range(n_c):
             m.addConstr(b_i[i] <= cmax * cov_i[i], name="c7({i})".format(i=i))
-        # 8ci>=-cmaxcbi
+        # 8 ci>=-cmaxcbi
         for i in range(n_c):
             m.addConstr(b_i[i] >= -cmax * cov_i[i], name="c8({i})".format(i=i))
-        # 4 sum wbij>=cbi
+        # 9 sum wbij>=cbi
         for i in range(n_c):
             m.addConstr(
                 sum(occ_i_j[i][j] for j in range(n_v)) >= cov_i[i],
@@ -167,7 +169,7 @@ class LpLearnerMilp(IncrementalLearner):
             inequalitys = []
             for i in range(n_c):
                 getvariables = [Symbol(domain.variables[j], REAL) for j in range(n_v)]
-                rightside = Real(b_i[i].x)
+                rightside = Real(b_i[i].x + 10 ** -5)
                 inequalitys.append(
                     GE(
                         rightside,
